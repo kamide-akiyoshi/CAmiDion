@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20141209
+//  ver.20150308
 //  http://www.yk.rim.or.jp/~kamide/music/chordhelper/hardware/
 //  http://kamide.b.sourceforge.jp/camidion/
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
@@ -140,7 +140,7 @@ PROGMEM const byte randomWavetable[] = {
 15,	37,	19,	34,	36,	8,	19,	10,
 32,	14,	19,	1,	1,	35,	35,	3,
 };
-PROGMEM const byte *wavetables[] = {
+PROGMEM const byte * const wavetables[] = {
 #ifdef OCTAVE_ANALOG_PIN
   PWM_SYNTH.sawtoothWavetable,
   PWM_SYNTH.squareWavetable,
