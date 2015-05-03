@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150308
+//  ver.20150503
 //  http://www.yk.rim.or.jp/~kamide/music/chordhelper/hardware/
 //  http://kamide.b.sourceforge.jp/camidion/
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
@@ -313,7 +313,13 @@ byte current_midi_channel = 1; // 1==CH1, ...
 #include <Wire.h>
 #define LCD_PARENT_CLASS I2CLiquidCrystal
 // contrast(0-63),5V/3.3V
+//
+// USB bus-power or NiMH battery x 4 (5v)
 #define LCD_CONSTRUCTOR_ARGS  (uint8_t)63,(bool)true
+//
+// Alkaline battery x 3 (4.5v)
+//#define LCD_CONSTRUCTOR_ARGS  (uint8_t)13,(bool)false
+//
 #else // Parallel
 #include <LiquidCrystal.h>
 #define LCD_PARENT_CLASS LiquidCrystal
