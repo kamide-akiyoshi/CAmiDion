@@ -25,7 +25,7 @@ class Button {
     void setNull(Button *p) { if( equals(p) ) setNull(); }
     void set(Button *p) { cathode8 = p->cathode8; anode6 = p->anode6; }
     byte getSerialNumber() { // returns 0 .. NUMBER_OF_BUTTONS - 1
-      return 8 * (cathode8 - LOWER_BOUND) + (anode6 - LOWER_BOUND);
+      return 8 * (anode6 - LOWER_BOUND) + (cathode8 - LOWER_BOUND);
     }
 };
 

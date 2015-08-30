@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150829
+//  ver.20150830
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
