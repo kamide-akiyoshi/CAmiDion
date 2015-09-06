@@ -16,8 +16,8 @@ class LedStatus {
     static const byte CENTER = 1;
     static const byte RIGHT = 2;
     static const byte UPPER = 3;
-    LedStatus(unsigned int value16) { this->leds.value16 = value16;  }
-    boolean isOn(byte i, byte mask) { return leds.values8[i] & mask; }
+    LedStatus() { this->leds.value16 = 0; }
+    boolean isBitOn(byte i, byte mask) { return leds.values8[i] & mask; }
     void setOn(byte pos)  { sbi(leds.values8[0], pos); }
     void setOff(byte pos) { cbi(leds.values8[0], pos); }
     void set(boolean isOn, byte pos) { if(isOn) setOn(pos); else setOff(pos); }
@@ -26,14 +26,14 @@ class LedStatus {
     void noteOff(byte pitch) { leds.value16 &= ~(0x0010 << pitch); }
     void showNote(byte pitch) { allNotesOff(); noteOn(pitch); }
     void showMidiChannel(byte ch0) { leds.value16 = 1 << ch0; }
-    void show(KeySignature ks) { showNote(ks.getNote()); }
+    void show(KeySignature *ksp) { showNote(ksp->getNote()); }
 };
 
 class NoteCountableLedStatus : public LedStatus {
   protected:
     byte counts[12];
   public:
-    NoteCountableLedStatus(unsigned int value16) : LedStatus(value16) {
+    NoteCountableLedStatus() : LedStatus() {
       memset(counts,0,NumberOf(counts));
     }
     void noteOff(byte pitch) {
@@ -58,15 +58,16 @@ class LedViewer {
     void setSource(LedStatus *source) { this->source = source; }
     void ledOff() {
       DDRC  &= ~PORTC_LED_MASK;  // Set INPUT
-      PORTC &= ~PORTC_LED_MASK;  // Set pullup flag off (Hi-Z)
+      PORTC &= ~PORTC_LED_MASK;  //  and pullup flag OFF (Hi-Z), LOW when output
     }
     void ledOn(HC138Decoder *decoder) {
       byte portc_mask = 0;
-      if( source->isOn(1,decoder->getOutput()) ) portc_mask |= PORTC_LED1_MASK;
-      if( source->isOn(0,decoder->getOutput()) ) portc_mask |= PORTC_LED0_MASK;
+      byte cathode_mask = decoder->getDecodedOutput();
+      if( source->isBitOn(1,cathode_mask) ) portc_mask |= PORTC_LED1_MASK;
+      if( source->isBitOn(0,cathode_mask) ) portc_mask |= PORTC_LED0_MASK;
       if( ! portc_mask ) return;
       DDRC  |= portc_mask; // Set OUTPUT
-      PORTC |= portc_mask; // Set HIGH
+      PORTC |= portc_mask; //  and HIGH
     }
 };
 

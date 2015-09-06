@@ -60,6 +60,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       current_chord = MusicalChord();
       clearChord();
     }
+    void setup() { begin(LCD_COLS, LCD_ROWS); }
     void begin(byte cols, byte rows) {
       LCD_PARENT_CLASS::begin(cols,rows);
       PROGMEM static const uint8_t natural[] = {
@@ -86,14 +87,14 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       memcpy_P( pattern_buf, data, sizeof(pattern_buf) );
       createChar(num, pattern_buf);
     }
-    void printKeySignature(KeySignature keysig, boolean is_changing) {
+    void printKeySignature(KeySignature *ksp, boolean is_changing) {
       setString("Key",3);
       *bufp++ = (is_changing ? '>' : ':');
-      bufp = keysig.print(bufp);
-      if( keysig.getCo5() == 0 ) *bufp++ = NATURAL;
+      bufp = ksp->print(bufp);
+      if( ksp->getCo5() == 0 ) *bufp++ = NATURAL;
 #if LCD_COLS >= 15
       *bufp++ = '(';
-      bufp = keysig.printSymbol(bufp);
+      bufp = ksp->printSymbol(bufp);
       *bufp++ = ')';
 #endif
       setCursor(0,1);
@@ -115,17 +116,17 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       printLineBuffer();
     }
     void printTempo(unsigned int bpm, boolean is_changing) {
-      *bufp++ = 'T';
 #if LCD_COLS >= 15
-      setString("empo",4);
+      setString("Tempo",5);
+#else
+      *bufp++ = 'T';
 #endif
       bufp += sprintf(bufp,"%c%ubpm    ",is_changing?'>':':',bpm);
       setCursor(0,0);
       printLineBuffer();
       clearChord();
     }
-    void printEnvelope(byte midi_channel) {
-      EnvelopeParam *ep = &(PWM_SYNTH.getChannel(midi_channel)->env_param);
+    void printEnvelope(EnvelopeParam *ep) {
       *bufp++ = 'a';
       setHex(0xF - PWM_SYNTH.log2(ep->attack_speed));
       *bufp++ = 'd';

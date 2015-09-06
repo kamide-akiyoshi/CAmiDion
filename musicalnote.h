@@ -15,7 +15,7 @@ class MusicalNote {
     static int shiftOctave(int note, int lower_bound) {
       return PWMDACSynth::musicalConstrain12(note, lower_bound, lower_bound + 11);
     }
-    static int shiftOctave(int note, int lower_bound, int chromatic_offset) {
+    static int shiftOctave(int note, int lower_bound, char chromatic_offset) {
       return shiftOctave( note, (
         chromatic_offset == 0 ?
         lower_bound :
@@ -31,7 +31,7 @@ class MusicalNote {
     char getCo5()  { return  co5_value; }
     char getNote() { return note_value; }
     char getOctaveShiftedNote() { return shiftOctave(note_value); }
-    char getOctaveShiftedNote(int chromatic_offset) {
+    char getOctaveShiftedNote(char chromatic_offset) {
       return shiftOctave( note_value, getLowerBound(), chromatic_offset );
     }
     char *print(char *bufp, char offset = 0) {
