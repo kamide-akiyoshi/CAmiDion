@@ -62,7 +62,7 @@ class LedViewer {
     }
     void ledOn(HC138Decoder *decoder) {
       byte portc_mask = 0;
-      byte cathode_mask = decoder->getDecodedOutput();
+      byte cathode_mask = decoder->getOutput();
       if( source->isBitOn(1,cathode_mask) ) portc_mask |= PORTC_LED1_MASK;
       if( source->isBitOn(0,cathode_mask) ) portc_mask |= PORTC_LED0_MASK;
       if( ! portc_mask ) return;

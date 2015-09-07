@@ -1,67 +1,72 @@
 
 ////////////////////////////////////////////////////////////////////
-// CAmiDion button matrix anode6(+1) - cathode8(+1)
+// CAmiDion button matrix (octal index)
 //
-//   1-0                            2-0 2-1 2-2
-// 0-0 1-1    2-3 2-4 2-5 2-6 2-7 | 5-0 5-1 5-2 5-3 5-4 5-5 5-6 5-7
-//   0-1 1-2  1-3 1-4 1-5 1-6 1-7 | 4-0 4-1 4-2 4-3 4-4 4-5 4-6 4-7
-//     0-2    0-3 0-4 0-5 0-6 0-7 | 3-0 3-1 3-2 3-3 3-4 3-5 3-6 3-7
+//   10                          20  21  22
+// 00  11    23  24  25  26  27  50  51  52  53  54  55  56  57
+//   01  12  13  14  15  16  17  40  41  42  43  44  45  46  47
+//     02    03  04  05  06  07  30  31  32  33  34  35  36  37
 //
 ////////////////////////////////////////////////////////////////////
-class MatrixButton {
+
+class ButtonStatus {
+  protected:
+    byte last_inputs[8];
   public:
-    static const byte NUMBER_OF_CATHODE = 8;  // Number of diode cathode line
-    static const byte NUMBER_OF_ANODE = 6;    // Number of diode anode line
-    static const byte NUMBER_OF_BUTTONS = NUMBER_OF_CATHODE * NUMBER_OF_ANODE;
-    static const char LOWER_BOUND = -1;
-    static const char NULL_BUTTON = -2;
-    char cathode8; // -1,0,1 | 2,3,4,5,6
-    char anode6;   // -1,0,1 | 2,3,4
-    boolean isNull() { return cathode8 == NULL_BUTTON; }
-    boolean equals(MatrixButton *p) { return cathode8 == p->cathode8 && anode6 == p->anode6; }
-    void setNull() { cathode8 = NULL_BUTTON; }
-    void setNull(MatrixButton *p) { if( equals(p) ) setNull(); }
-    void set(MatrixButton *p) { cathode8 = p->cathode8; anode6 = p->anode6; }
+    static const byte INDEX_OF_KEY   = 0;
+    static const byte INDEX_OF_ADD9  = 1;
+    static const byte INDEX_OF_FLAT5 = 2;
+    boolean isKeyOn()    { return ~last_inputs[0] & (1<<0); }
+    boolean isAdd9On()   { return ~last_inputs[1] & (1<<0); }
+    boolean isFlat5On()  { return ~last_inputs[2] & (1<<0); }
+    static const byte INDEX_OF_MIDI_CH = 8;
+    static const byte INDEX_OF_M7      = 9;
+    static const byte INDEX_OF_7       = 10;
+    boolean isMidiChOn() { return ~last_inputs[0] & (1<<1); }
+    boolean isM7On()     { return ~last_inputs[1] & (1<<1); }
+    boolean is7On()      { return ~last_inputs[2] & (1<<1); }
+    static const byte INDEX_OF_ARPEGGIO = 16;
+    static const byte INDEX_OF_DRUM     = 17;
+    static const byte INDEX_OF_CHORD    = 18;
 };
 
 class AbstractButtonHandler {
   public:
-    virtual void pressed(MatrixButton *bp);
-    virtual void released(MatrixButton *bp);
+    virtual void pressed(ButtonStatus *button_status, byte button_index);
+    virtual void released(ButtonStatus *button_status, byte button_index);
 };
 
-class ButtonScanner : public MatrixButton {
+class ButtonScanner : public ButtonStatus {
   protected:
     static const byte PORTB_BUTTON_MASK = 0b00111111; // Arduino port D8..13
     static const byte WAIT_TIMES = 8; // Anti-chattering release wait count
-    byte last_inputs[NUMBER_OF_CATHODE];
-    byte *last_input_p;
-    byte waiting_after_off[NUMBER_OF_BUTTONS];
-    byte getIndex() { // returns 0 .. NUMBER_OF_BUTTONS - 1
-      return NUMBER_OF_CATHODE * (anode6 - LOWER_BOUND) + (cathode8 - LOWER_BOUND);
-    }
+    byte waiting_after_off[48];
   public:
     void setup() {
       DDRB  &= ~PORTB_BUTTON_MASK; // Set 0 (INPUT)
       PORTB |= PORTB_BUTTON_MASK;  // Set 1 to enable internal pullup resistor
-      memset(last_inputs, 0b11111111, sizeof(last_inputs));
+      memset(last_inputs, 0xFF, sizeof(last_inputs));
       memset(waiting_after_off, 0, sizeof(waiting_after_off));
     }
-    void reset() { cathode8 = LOWER_BOUND; last_input_p = last_inputs; }
-    void next() { cathode8++; last_input_p++; }
-    void scan(AbstractButtonHandler *handler) {
+    void scan(AbstractButtonHandler *handler, HC138Decoder *decoder) {
       byte input = PINB | ~PORTB_BUTTON_MASK;
-      byte change = input ^ *last_input_p;
+      byte decoder_input = decoder->getInput();
+      byte change = input ^ last_inputs[decoder_input];
       if( change == 0 ) return;
-      anode6 = LOWER_BOUND;
-      for( byte mask = 1; mask < PORTB_BUTTON_MASK; mask <<= 1, anode6++ ) {
+      byte local_index = 0;
+      for( byte mask = 1; mask < PORTB_BUTTON_MASK; mask <<= 1, local_index++ ) {
         if( (change & mask) == 0 ) continue;
-        byte *waiting = waiting_after_off + getIndex();
-        if( (input & mask) == 0 ) { handler->pressed(this); *waiting = WAIT_TIMES; continue; }
-        if( *waiting == 0 ) { handler->released(this); continue; }
+        byte button_index = 8 * local_index + decoder_input;
+        byte *waiting = waiting_after_off + button_index;
+        if( (input & mask) == 0 ) {
+          handler->pressed(this, button_index); *waiting = WAIT_TIMES; continue;
+        }
+        if( *waiting == 0 ) {
+          handler->released(this, button_index); continue;
+        }
         input ^= mask; (*waiting)--;
       }
-      *last_input_p = input;
+      last_inputs[decoder->getInput()] = input;
     }
 };
 
