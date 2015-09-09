@@ -9,64 +9,61 @@
 //
 ////////////////////////////////////////////////////////////////////
 
-class ButtonStatus {
+class ButtonInput {
   protected:
-    byte last_inputs[8];
+    static const byte WAIT_TIMES = 16; // Anti-chattering release wait count
+    static const byte PORTB_BUTTON_MASK = 0b00111111; // Arduino port D8..13
+    byte waiting_after_off[48];
+    byte last_input_bits[8];
+    void (*pressed)(byte);
+    void (*released)(byte);
   public:
-    static const byte INDEX_OF_KEY   = 0;
-    static const byte INDEX_OF_ADD9  = 1;
-    static const byte INDEX_OF_FLAT5 = 2;
-    boolean isKeyOn()    { return ~last_inputs[0] & (1<<0); }
-    boolean isAdd9On()   { return ~last_inputs[1] & (1<<0); }
-    boolean isFlat5On()  { return ~last_inputs[2] & (1<<0); }
-    static const byte INDEX_OF_MIDI_CH = 8;
-    static const byte INDEX_OF_M7      = 9;
-    static const byte INDEX_OF_7       = 10;
-    boolean isMidiChOn() { return ~last_inputs[0] & (1<<1); }
-    boolean isM7On()     { return ~last_inputs[1] & (1<<1); }
-    boolean is7On()      { return ~last_inputs[2] & (1<<1); }
+    static const byte INDEX_OF_KEY      = 0;
+    static const byte INDEX_OF_ADD9     = 1;
+    static const byte INDEX_OF_FLAT5    = 2;
+    static const byte INDEX_OF_MIDI_CH  = 8;
+    static const byte INDEX_OF_M7       = 9;
+    static const byte INDEX_OF_7        = 10;
     static const byte INDEX_OF_ARPEGGIO = 16;
     static const byte INDEX_OF_DRUM     = 17;
     static const byte INDEX_OF_CHORD    = 18;
-};
-
-class AbstractButtonHandler {
-  public:
-    virtual void pressed(ButtonStatus *button_status, byte button_index);
-    virtual void released(ButtonStatus *button_status, byte button_index);
-};
-
-class ButtonScanner : public ButtonStatus {
-  protected:
-    static const byte PORTB_BUTTON_MASK = 0b00111111; // Arduino port D8..13
-    static const byte WAIT_TIMES = 8; // Anti-chattering release wait count
-    byte waiting_after_off[48];
-  public:
+    boolean isKeyOn()    { return ~last_input_bits[0] & (1<<0); }
+    boolean isAdd9On()   { return ~last_input_bits[1] & (1<<0); }
+    boolean isFlat5On()  { return ~last_input_bits[2] & (1<<0); }
+    boolean isMidiChOn() { return ~last_input_bits[0] & (1<<1); }
+    boolean isM7On()     { return ~last_input_bits[1] & (1<<1); }
+    boolean is7On()      { return ~last_input_bits[2] & (1<<1); }
+    ButtonInput() {
+      memset(waiting_after_off, 0, sizeof(waiting_after_off));
+      memset(last_input_bits, 0xFF, sizeof(last_input_bits));
+      pressed = released = NULL;
+    }
     void setup() {
       DDRB  &= ~PORTB_BUTTON_MASK; // Set 0 (INPUT)
       PORTB |= PORTB_BUTTON_MASK;  // Set 1 to enable internal pullup resistor
-      memset(last_inputs, 0xFF, sizeof(last_inputs));
-      memset(waiting_after_off, 0, sizeof(waiting_after_off));
     }
-    void scan(AbstractButtonHandler *handler, HC138Decoder *decoder) {
-      byte input = PINB | ~PORTB_BUTTON_MASK;
-      byte decoder_input = decoder->getInput();
-      byte change = input ^ last_inputs[decoder_input];
+    void setHandlePressed(void (*handler)(byte)) { pressed = handler; }
+    void setHandleReleased(void (*handler)(byte)) { released = handler; }
+    void scan(HC138Decoder *decoder) {
+      byte new_input = PINB | ~PORTB_BUTTON_MASK;
+      byte index = decoder->getInput();
+      byte *last = last_input_bits + index;
+      byte change = new_input ^ *last;
       if( change == 0 ) return;
-      byte local_index = 0;
-      for( byte mask = 1; mask < PORTB_BUTTON_MASK; mask <<= 1, local_index++ ) {
+      for( byte mask = 1; mask < PORTB_BUTTON_MASK; mask <<= 1, index += 8 ) {
         if( (change & mask) == 0 ) continue;
-        byte button_index = 8 * local_index + decoder_input;
-        byte *waiting = waiting_after_off + button_index;
-        if( (input & mask) == 0 ) {
-          handler->pressed(this, button_index); *waiting = WAIT_TIMES; continue;
+        byte *waiting = waiting_after_off + index;
+        if( (new_input & mask) == 0 ) {
+          if (pressed != NULL) pressed(index);
+          *waiting = WAIT_TIMES; continue;
         }
         if( *waiting == 0 ) {
-          handler->released(this, button_index); continue;
+          if (pressed != NULL) released(index);
+          continue;
         }
-        input ^= mask; (*waiting)--;
+        new_input ^= mask; (*waiting)--;
       }
-      last_inputs[decoder->getInput()] = input;
+      *last = new_input;
     }
 };
 

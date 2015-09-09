@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150908
+//  ver.20150909
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -32,7 +32,7 @@ KeySignature key_signature = KeySignature();
 NoteCountableLedStatus led_main = NoteCountableLedStatus();
 LedStatus led_key  = LedStatus();
 LedStatus led_ctrl = LedStatus();
-LedViewer led_viewer = LedViewer(&led_main);
+LedViewport led_viewport = LedViewport(&led_main);
 #endif
 
 #if defined(USE_LCD)
@@ -116,7 +116,7 @@ class WaveSelecter {
     WaveSelecter() {
       current_midi_channel = 1;
 #ifdef USE_LED
-      led_ctrl.showMidiChannel(current_midi_channel - 1);
+      led_ctrl.setMidiChannel(current_midi_channel - 1);
 #endif
       memset(selected_waveforms, 0, sizeof(selected_waveforms));
     }
@@ -166,7 +166,7 @@ class WaveSelecter {
       char ch0 = current_midi_channel + offset - 1;
       current_midi_channel = (ch0 &= 0xF) + 1;
 #ifdef USE_LED
-      led_ctrl.showMidiChannel(ch0);
+      led_ctrl.setMidiChannel(ch0);
 #endif
 #ifdef USE_LCD
       showWaveform(true);
@@ -513,180 +513,159 @@ class Metronome {
 };
 Metronome metronome = Metronome();
 
-class ButtonHandler : public AbstractButtonHandler {
-  public:
-    void pressed(ButtonStatus *button_status, byte button_index) {
-      static const byte SUS4 = 1;
-      char x = button_index & 7;
-      char y = (button_index >> 3) & 7;
-      if( y >= 3 ) { x--; y -= 4; } else if( x >= 3 ) { x -= 9; y--; } else {
-        switch(button_index) {
-          case ButtonStatus::INDEX_OF_KEY:
-#ifdef USE_LED
-            led_key.showNote(key_signature.getNote());
-            led_viewer.setSource(&led_key);
-#endif
-#ifdef USE_LCD
-            lcd.printTempo( metronome.getBpm(), button_status->isAdd9On() );
-            lcd.printKeySignature( &key_signature, !(button_status->isAdd9On()) );
-#endif
-            break;
-          case ButtonStatus::INDEX_OF_ADD9:
-#ifdef USE_LCD
-            if( button_status->isKeyOn() ) {
-              lcd.printTempo( metronome.getBpm(), true );
-              lcd.printKeySignature( &key_signature, false );
-            }
-#endif
-            break;
-          case ButtonStatus::INDEX_OF_MIDI_CH:
-#ifdef USE_LED
-            led_viewer.setSource(&led_ctrl);
-#endif
-#ifdef USE_LCD
-            wave_selecter.changeCurrentMidiChannel(0);
-#endif
-            break;
-          case ButtonStatus::INDEX_OF_ARPEGGIO:
-            if( ! button_status->isKeyOn() ) {
-              arpeggiator.toggleOnOff();
-            } else if( button_status->isAdd9On() ) {
-              metronome.setResolution(metronome.getResolution()==4?3:4);
-            } else {
-              arpeggiator.toggleHoldMode();
-            }
-            break;
-          case ButtonStatus::INDEX_OF_DRUM:
-            if( button_status->isKeyOn() ) metronome.tap(); else drum.toggleActive();
-            break;
-          case ButtonStatus::INDEX_OF_CHORD:
-            if( button_status->isKeyOn() ) note_buttons.toggleHoldMode();
-            else note_buttons.togglePolyMode();
-            break;
-        }
-        return;
-      }
-      if( button_status->isKeyOn() ) {
-        if( button_status->isAdd9On() ) {
-          if(x == 0) metronome.shiftTempo(y);
-          return;
-        }
-        if(x) key_signature.shift(x); else key_signature.shift( 7 * y, -5, 6 );
-#ifdef USE_LED
-        led_key.show(&key_signature);
-#endif
-#ifdef USE_LCD
-        lcd.printKeySignature(&key_signature, true);
-#endif
-        return;
-      }
-      if( button_status->isMidiChOn() ) {
-        if(y == 0) {
-          if( x >= -1 && x <= 1 ) {
-            wave_selecter.changeCurrentMidiChannel(x);
-          }
-          return;
-        }
-        switch(x) {
-          case 0: wave_selecter.changeWaveform(y); break;
-          case 1: wave_selecter.changeAttack(y);   break;
-          case 2: wave_selecter.changeDecay(y);    break;
-          case 3: wave_selecter.changeSustain(y);  break;
-          case 4: wave_selecter.changeRelease(y);  break;
-        }
-        return;
-      }
-      note_buttons.forceRelease();
-      arpeggiator.forceRelease();
-      NoteButtonEntry *nbp = note_buttons.getFreeEntry();
-      if( nbp == NULL ) return;
-      boolean is_flat5 = button_status->isFlat5On();
-      boolean is_aug = (y == SUS4 && is_flat5);
-      MusicalChord chord = MusicalChord(
-        key_signature, x, is_aug? 0: y,
-        is_aug? 1: is_flat5? -1: 0,
-        (button_status->isM7On() ? -1 : 0) + (button_status->is7On() ? -2 : 0),
-        button_status->isAdd9On()
-      );
-      if( ! note_buttons.isPolyMode() && ! arpeggiator.isOn() ) {
-        nbp->noteOn(button_index, wave_selecter.getCurrentMidiChannel(),
-          chord.getOctaveShiftedNote(y == SUS4 ? 12 : 0)
-        );
-        return;
-      }
-      if( note_buttons.isPolyMode() ) {
-        nbp->noteOn(button_index, wave_selecter.getCurrentMidiChannel(), &chord);
-      }
-      if( arpeggiator.isOn() ) {
-        arpeggiator.pressed(button_index, wave_selecter.getCurrentMidiChannel(), &chord);
-      }
-#ifdef USE_LCD
-      lcd.printChord(&chord);
-#endif
-    }
-    void released(ButtonStatus *button_status, byte button_index) {
-      if( button_index >= 24 || (button_index & 7) >= 3 ) {
-        note_buttons.released(button_index);
-        arpeggiator.released(button_index);
-        return;
-      }
-      switch(button_index) {
-        case ButtonStatus::INDEX_OF_KEY:
-#ifdef USE_LED
-          led_viewer.setSource(&led_main);
-#endif
-#ifdef USE_LCD
-          lcd.printKeySignature( &key_signature, false );
-          if( button_status->isAdd9On() ) lcd.printTempo( metronome.getBpm(), false );
-#endif
-          break;
-        case ButtonStatus::INDEX_OF_ADD9:
-#ifdef USE_LCD
-          if( button_status->isKeyOn() ) {
-            lcd.printTempo( metronome.getBpm(), false );
-            lcd.printKeySignature( &key_signature, true );
-          }
-#endif
-          break;
-        case ButtonStatus::INDEX_OF_MIDI_CH:
-#ifdef USE_LED
-          led_viewer.setSource(&led_main);
-#endif
-#ifdef USE_LCD
-          wave_selecter.showWaveform(false);
-          lcd.printKeySignature( &key_signature, false );
-#endif
-          break;
-      }
-    }
-};
+ButtonInput button_input = ButtonInput();
 
-class Matrix {
-  protected:
-    ButtonHandler handler = ButtonHandler();
-    ButtonScanner scanner = ButtonScanner();
-    HC138Decoder decoder = HC138Decoder();
-  public:
-    void setup() { scanner.setup(); decoder.setup(); }
-    void scan() {
-      for( decoder.reset(); decoder.isSendable(); decoder.next() ) {
+void HandleButtonPressed(byte button_index) {
+  static const byte SUS4 = 1;
+  char x = button_index & 7;
+  char y = (button_index >> 3) & 7;
+  if( y >= 3 ) { x--; y -= 4; } else if( x >= 3 ) { x -= 9; y--; } else {
+    switch(button_index) {
+      case ButtonInput::INDEX_OF_KEY:
 #ifdef USE_LED
-        led_viewer.ledOff();
+        led_key.setKeySignature(&key_signature);
+        led_viewport.setSource(&led_key);
 #endif
-        decoder.send();
+#ifdef USE_LCD
+        lcd.printTempo( metronome.getBpm(), button_input.isAdd9On() );
+        lcd.printKeySignature( &key_signature, !(button_input.isAdd9On()) );
+#endif
+        break;
+      case ButtonInput::INDEX_OF_ADD9:
+#ifdef USE_LCD
+        if( ! button_input.isKeyOn() ) break;
+        lcd.printTempo( metronome.getBpm(), true );
+        lcd.printKeySignature( &key_signature, false );
+#endif
+        break;
+      case ButtonInput::INDEX_OF_MIDI_CH:
 #ifdef USE_LED
-        led_viewer.ledOn(&decoder);
+        led_viewport.setSource(&led_ctrl);
 #endif
-        scanner.scan(&handler, &decoder);
-        PWM_SYNTH.updateEnvelopeStatus();
-      }
+#ifdef USE_LCD
+        wave_selecter.changeCurrentMidiChannel(0);
+#endif
+        break;
+      case ButtonInput::INDEX_OF_ARPEGGIO:
+        if( ! button_input.isKeyOn() ) {
+          arpeggiator.toggleOnOff();
+        } else if( button_input.isAdd9On() ) {
+          metronome.setResolution(metronome.getResolution()==4?3:4);
+        } else {
+          arpeggiator.toggleHoldMode();
+        }
+        break;
+      case ButtonInput::INDEX_OF_DRUM:
+        if( button_input.isKeyOn() ) { metronome.tap(); break; }
+        drum.toggleActive();
+        break;
+      case ButtonInput::INDEX_OF_CHORD:
+        if( button_input.isKeyOn() ) { note_buttons.toggleHoldMode(); break; }
+        note_buttons.togglePolyMode();
+        break;
     }
-};
-Matrix matrix = Matrix();
+    return;
+  }
+  if( button_input.isKeyOn() ) {
+    if( button_input.isAdd9On() ) {
+      if(x == 0) metronome.shiftTempo(y);
+      return;
+    }
+    if(x) key_signature.shift(x); else key_signature.shift( 7 * y, -5, 6 );
+#ifdef USE_LED
+    led_key.setKeySignature(&key_signature);
+#endif
+#ifdef USE_LCD
+    lcd.printKeySignature(&key_signature, true);
+#endif
+    return;
+  }
+  if( button_input.isMidiChOn() ) {
+    if(y == 0) {
+      if( x >= -1 && x <= 1 ) {
+        wave_selecter.changeCurrentMidiChannel(x);
+      }
+      return;
+    }
+    switch(x) {
+      case 0: wave_selecter.changeWaveform(y); break;
+      case 1: wave_selecter.changeAttack(y);   break;
+      case 2: wave_selecter.changeDecay(y);    break;
+      case 3: wave_selecter.changeSustain(y);  break;
+      case 4: wave_selecter.changeRelease(y);  break;
+    }
+    return;
+  }
+  note_buttons.forceRelease();
+  arpeggiator.forceRelease();
+  NoteButtonEntry *nbp = note_buttons.getFreeEntry();
+  if( nbp == NULL ) return;
+  boolean is_flat5 = button_input.isFlat5On();
+  boolean is_aug = (y == SUS4 && is_flat5);
+  MusicalChord chord = MusicalChord(
+    key_signature, x, is_aug? 0: y,
+    is_aug? 1: is_flat5? -1: 0,
+    (button_input.isM7On() ? -1 : 0) + (button_input.is7On() ? -2 : 0),
+    button_input.isAdd9On()
+  );
+  if( ! note_buttons.isPolyMode() && ! arpeggiator.isOn() ) {
+    nbp->noteOn(button_index, wave_selecter.getCurrentMidiChannel(),
+      chord.getOctaveShiftedNote(y == SUS4 ? 12 : 0)
+    );
+    return;
+  }
+  if( note_buttons.isPolyMode() ) {
+    nbp->noteOn(button_index, wave_selecter.getCurrentMidiChannel(), &chord);
+  }
+  if( arpeggiator.isOn() ) {
+    arpeggiator.pressed(button_index, wave_selecter.getCurrentMidiChannel(), &chord);
+  }
+#ifdef USE_LCD
+  lcd.printChord(&chord);
+#endif
+}
+
+void HandleButtonReleased(byte button_index) {
+  if( button_index >= 24 || (button_index & 7) >= 3 ) {
+    note_buttons.released(button_index);
+    arpeggiator.released(button_index);
+    return;
+  }
+  switch(button_index) {
+    case ButtonInput::INDEX_OF_KEY:
+#ifdef USE_LED
+      led_viewport.setSource(&led_main);
+#endif
+#ifdef USE_LCD
+      lcd.printKeySignature( &key_signature, false );
+      if( button_input.isAdd9On() ) lcd.printTempo( metronome.getBpm(), false );
+#endif
+      break;
+    case ButtonInput::INDEX_OF_ADD9:
+#ifdef USE_LCD
+      if( button_input.isKeyOn() ) {
+        lcd.printTempo( metronome.getBpm(), false );
+        lcd.printKeySignature( &key_signature, true );
+      }
+#endif
+      break;
+    case ButtonInput::INDEX_OF_MIDI_CH:
+#ifdef USE_LED
+      led_viewport.setSource(&led_main);
+#endif
+#ifdef USE_LCD
+      wave_selecter.showWaveform(false);
+      lcd.printKeySignature( &key_signature, false );
+#endif
+      break;
+  }
+}
+
+HC138Decoder decoder = HC138Decoder();
 
 void setup() {
 #ifdef USE_LED
-  led_key.showNote(key_signature.getNote());
+  led_key.setKeySignature(&key_signature);
 #endif
 #ifdef USE_LCD
   lcd.setup();
@@ -694,7 +673,10 @@ void setup() {
 #endif
   PWM_SYNTH.setup();
   wave_selecter.setup();
-  matrix.setup();
+  decoder.setup();
+  button_input.setup();
+  button_input.setHandlePressed(HandleButtonPressed);
+  button_input.setHandleReleased(HandleButtonReleased);
 #ifdef USE_MIDI
 #ifdef USE_MIDI_IN
   MIDI.setHandleNoteOff(HandleNoteOff);
@@ -710,7 +692,17 @@ void setup() {
 }
 
 void loop() {
-  matrix.scan();
+  for( decoder.reset(); decoder.getOutput(); decoder.next() ) {
+#ifdef USE_LED
+    led_viewport.lightOff();
+#endif
+    decoder.sendOut();
+#ifdef USE_LED
+    led_viewport.lightOn(&decoder);
+#endif
+    button_input.scan(&decoder);
+    PWM_SYNTH.updateEnvelopeStatus();
+  }
 #ifdef USE_MIDI_IN
   MIDI.read();
 #endif

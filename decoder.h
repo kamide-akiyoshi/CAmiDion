@@ -13,9 +13,8 @@ class HC138Decoder {
   public:
     void setup() { DDRD |= PORTD_MASK; } // Set pins OUTPUT for 74HC138 input
     void reset() { portd_value = input = 0; output = 1; }
-    void send()  { PORTD &= ~PORTD_MASK; PORTD |= portd_value; }
+    void sendOut()  { PORTD &= ~PORTD_MASK; PORTD |= portd_value; }
     void next() { portd_value += PORTD_STEP; output <<= 1; input++; }
-    boolean isSendable() { return output; }
     byte getOutput() { return output; }
     byte getInput() { return input; }
 };
