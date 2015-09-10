@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150909
+//  ver.20150910
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -11,21 +11,26 @@
 
 #include <limits.h>
 
-#if defined(USE_MIDI)
-#include <MIDI.h>
-MIDI_CREATE_DEFAULT_INSTANCE();
-#endif
-
 #include <PWMDAC_Synth.h>
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
 extern PROGMEM const byte guitarWavetable[];
 extern PROGMEM const byte randomWavetable[];
 
+#if defined(USE_MIDI)
+#include <MIDI.h>
+MIDI_CREATE_DEFAULT_INSTANCE();
+#endif
+
 #include "musicalnote.h"
 KeySignature key_signature = KeySignature();
 
 #include "decoder.h"
+HC138Decoder decoder = HC138Decoder();
+
 #include "button.h"
+extern void HandleButtonPressed(byte);
+extern void HandleButtonReleased(byte);
+ButtonInput button_input = ButtonInput(HandleButtonPressed, HandleButtonReleased);
 
 #ifdef USE_LED
 #include "LED.h"
@@ -49,43 +54,6 @@ LedViewport led_viewport = LedViewport(&led_main);
 CAmiDionLCD lcd = CAmiDionLCD();
 #endif
 
-// MIDI IN receive callbacks
-void HandleNoteOff(byte channel, byte pitch, byte velocity) {
-  PWM_SYNTH.noteOff(channel,pitch,velocity);
-#ifdef USE_LED
-  led_main.noteOff(pitch);
-#endif
-}
-void HandleNoteOn(byte channel, byte pitch, byte velocity) {
-  if( velocity == 0 ) {
-    HandleNoteOff(channel,pitch,velocity);
-    return;
-  }
-  PWM_SYNTH.noteOn(channel,pitch,velocity);
-#ifdef USE_LED
-  led_main.noteOn(pitch);
-#endif
-}
-
-// MIDI OUT 
-class MidiSender {
-  public:
-    static const byte DEFAULT_VELOCITY = 100;
-    void noteOff(char channel, char note, char velocity) {
-      HandleNoteOff(channel, note, velocity);
-#ifdef USE_MIDI_OUT
-      MIDI.sendNoteOff(note, velocity, channel);
-#endif
-    }
-    void noteOff(char channel, char note) { noteOff(channel, note, DEFAULT_VELOCITY); }
-    void noteOn(char channel, char note, char velocity) {
-      HandleNoteOn(channel, note, velocity);
-#ifdef USE_MIDI_OUT
-      MIDI.sendNoteOn(note, velocity, channel);
-#endif
-    }
-    void noteOn(char channel, char note) { noteOn(channel, note, DEFAULT_VELOCITY); }
-};
 
 PROGMEM const byte * const wavetables[] = {
 #ifdef OCTAVE_ANALOG_PIN
@@ -139,6 +107,18 @@ class WaveSelecter {
         }
       }
     }
+    byte getCurrentMidiChannel() { return current_midi_channel; }
+    void changeCurrentMidiChannel(char offset) {
+      char ch0 = current_midi_channel + offset - 1;
+      current_midi_channel = (ch0 &= 0xF) + 1;
+#ifdef USE_LED
+      led_ctrl.setMidiChannel(ch0);
+#endif
+#ifdef USE_LCD
+      showWaveform(true);
+      showEnvelope();
+#endif
+    }
 #ifdef USE_LCD
     void showWaveform(boolean channel_is_changing = false) {
       lcd.printWaveform(
@@ -160,18 +140,8 @@ class WaveSelecter {
         = (PROGMEM const byte *)pgm_read_word(wavetables + *selected_waveform);
       if(midi_channel == current_midi_channel) showWaveform();
     }
-    void changeWaveform(char offset) { changeWaveform(current_midi_channel,offset); }
-    byte getCurrentMidiChannel() { return current_midi_channel; }
-    void changeCurrentMidiChannel(char offset) {
-      char ch0 = current_midi_channel + offset - 1;
-      current_midi_channel = (ch0 &= 0xF) + 1;
-#ifdef USE_LED
-      led_ctrl.setMidiChannel(ch0);
-#endif
-#ifdef USE_LCD
-      showWaveform(true);
-      showEnvelope();
-#endif
+    void changeWaveform(char offset) {
+      changeWaveform(current_midi_channel, offset);
     }
     void changeAttack(char offset) {
       unsigned int *asp = &(getEnvParam()->attack_speed);
@@ -181,7 +151,9 @@ class WaveSelecter {
       showEnvelope();
 #endif
     }
-    void changeDecay(char offset) { changeEnvTime( &(getEnvParam()->decay_time), offset ); }
+    void changeDecay(char offset) {
+      changeEnvTime( &(getEnvParam()->decay_time), offset );
+    }
     void changeSustain(char offset) {
       unsigned int *slp = &(getEnvParam()->sustain_level);
       if( offset > 0 ) *slp +=0x1000; else *slp -=0x1000;
@@ -189,10 +161,50 @@ class WaveSelecter {
       showEnvelope();
 #endif
     }
-    void changeRelease(char offset) { changeEnvTime( &(getEnvParam()->release_time), offset ); }
+    void changeRelease(char offset) {
+      changeEnvTime( &(getEnvParam()->release_time), offset );
+    }
 };
 
 WaveSelecter wave_selecter = WaveSelecter();
+
+// MIDI IN receive callbacks
+void HandleNoteOff(byte channel, byte pitch, byte velocity) {
+  PWM_SYNTH.noteOff(channel,pitch,velocity);
+#ifdef USE_LED
+  led_main.noteOff(pitch);
+#endif
+}
+void HandleNoteOn(byte channel, byte pitch, byte velocity) {
+  if( velocity == 0 ) {
+    HandleNoteOff(channel,pitch,velocity);
+    return;
+  }
+  PWM_SYNTH.noteOn(channel,pitch,velocity);
+#ifdef USE_LED
+  led_main.noteOn(pitch);
+#endif
+}
+
+// MIDI OUT 
+class MidiSender {
+  public:
+    static const byte DEFAULT_VELOCITY = 100;
+    void noteOff(char channel, char note, char velocity) {
+      HandleNoteOff(channel, note, velocity);
+#ifdef USE_MIDI_OUT
+      MIDI.sendNoteOff(note, velocity, channel);
+#endif
+    }
+    void noteOff(char channel, char note) { noteOff(channel, note, DEFAULT_VELOCITY); }
+    void noteOn(char channel, char note, char velocity) {
+      HandleNoteOn(channel, note, velocity);
+#ifdef USE_MIDI_OUT
+      MIDI.sendNoteOn(note, velocity, channel);
+#endif
+    }
+    void noteOn(char channel, char note) { noteOn(channel, note, DEFAULT_VELOCITY); }
+};
 
 class NoteButtonEntry : public MidiSender {
   protected:
@@ -513,14 +525,14 @@ class Metronome {
 };
 Metronome metronome = Metronome();
 
-ButtonInput button_input = ButtonInput();
-
 void HandleButtonPressed(byte button_index) {
-  static const byte SUS4 = 1;
   char x = button_index & 7;
   char y = (button_index >> 3) & 7;
-  if( y >= 3 ) { x--; y -= 4; } else if( x >= 3 ) { x -= 9; y--; } else {
+  if( y >= 3 ) { x--; y -= 4; }
+  else if( x >= 3 ) { x -= 9; y--; }
+  else {
     switch(button_index) {
+
       case ButtonInput::INDEX_OF_KEY:
 #ifdef USE_LED
         led_key.setKeySignature(&key_signature);
@@ -531,6 +543,7 @@ void HandleButtonPressed(byte button_index) {
         lcd.printKeySignature( &key_signature, !(button_input.isAdd9On()) );
 #endif
         break;
+
       case ButtonInput::INDEX_OF_ADD9:
 #ifdef USE_LCD
         if( ! button_input.isKeyOn() ) break;
@@ -538,6 +551,7 @@ void HandleButtonPressed(byte button_index) {
         lcd.printKeySignature( &key_signature, false );
 #endif
         break;
+
       case ButtonInput::INDEX_OF_MIDI_CH:
 #ifdef USE_LED
         led_viewport.setSource(&led_ctrl);
@@ -546,6 +560,7 @@ void HandleButtonPressed(byte button_index) {
         wave_selecter.changeCurrentMidiChannel(0);
 #endif
         break;
+
       case ButtonInput::INDEX_OF_ARPEGGIO:
         if( ! button_input.isKeyOn() ) {
           arpeggiator.toggleOnOff();
@@ -555,10 +570,12 @@ void HandleButtonPressed(byte button_index) {
           arpeggiator.toggleHoldMode();
         }
         break;
+
       case ButtonInput::INDEX_OF_DRUM:
         if( button_input.isKeyOn() ) { metronome.tap(); break; }
         drum.toggleActive();
         break;
+
       case ButtonInput::INDEX_OF_CHORD:
         if( button_input.isKeyOn() ) { note_buttons.toggleHoldMode(); break; }
         note_buttons.togglePolyMode();
@@ -600,6 +617,7 @@ void HandleButtonPressed(byte button_index) {
   arpeggiator.forceRelease();
   NoteButtonEntry *nbp = note_buttons.getFreeEntry();
   if( nbp == NULL ) return;
+  static const byte SUS4 = 1;
   boolean is_flat5 = button_input.isFlat5On();
   boolean is_aug = (y == SUS4 && is_flat5);
   MusicalChord chord = MusicalChord(
@@ -632,6 +650,7 @@ void HandleButtonReleased(byte button_index) {
     return;
   }
   switch(button_index) {
+
     case ButtonInput::INDEX_OF_KEY:
 #ifdef USE_LED
       led_viewport.setSource(&led_main);
@@ -641,14 +660,15 @@ void HandleButtonReleased(byte button_index) {
       if( button_input.isAdd9On() ) lcd.printTempo( metronome.getBpm(), false );
 #endif
       break;
+
     case ButtonInput::INDEX_OF_ADD9:
 #ifdef USE_LCD
-      if( button_input.isKeyOn() ) {
-        lcd.printTempo( metronome.getBpm(), false );
-        lcd.printKeySignature( &key_signature, true );
-      }
+      if( ! button_input.isKeyOn() ) break;
+      lcd.printTempo( metronome.getBpm(), false );
+      lcd.printKeySignature( &key_signature, true );
 #endif
       break;
+
     case ButtonInput::INDEX_OF_MIDI_CH:
 #ifdef USE_LED
       led_viewport.setSource(&led_main);
@@ -661,9 +681,8 @@ void HandleButtonReleased(byte button_index) {
   }
 }
 
-HC138Decoder decoder = HC138Decoder();
-
 void setup() {
+  PWM_SYNTH.setup();
 #ifdef USE_LED
   led_key.setKeySignature(&key_signature);
 #endif
@@ -671,12 +690,9 @@ void setup() {
   lcd.setup();
   lcd.printKeySignature(&key_signature, false);
 #endif
-  PWM_SYNTH.setup();
   wave_selecter.setup();
   decoder.setup();
   button_input.setup();
-  button_input.setHandlePressed(HandleButtonPressed);
-  button_input.setHandleReleased(HandleButtonReleased);
 #ifdef USE_MIDI
 #ifdef USE_MIDI_IN
   MIDI.setHandleNoteOff(HandleNoteOff);

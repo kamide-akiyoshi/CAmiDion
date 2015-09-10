@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////
 // CAmiDion button matrix (octal index)
 //
@@ -8,62 +7,51 @@
 //     02    03  04  05  06  07  30  31  32  33  34  35  36  37
 //
 ////////////////////////////////////////////////////////////////////
-
 class ButtonInput {
   protected:
     static const byte WAIT_TIMES = 16; // Anti-chattering release wait count
     static const byte PORTB_BUTTON_MASK = 0b00111111; // Arduino port D8..13
     byte waiting_after_off[48];
-    byte last_input_bits[8];
+    byte input_status[8];
     void (*pressed)(byte);
     void (*released)(byte);
   public:
     static const byte INDEX_OF_KEY      = 0;
     static const byte INDEX_OF_ADD9     = 1;
-    static const byte INDEX_OF_FLAT5    = 2;
     static const byte INDEX_OF_MIDI_CH  = 8;
-    static const byte INDEX_OF_M7       = 9;
-    static const byte INDEX_OF_7        = 10;
     static const byte INDEX_OF_ARPEGGIO = 16;
     static const byte INDEX_OF_DRUM     = 17;
     static const byte INDEX_OF_CHORD    = 18;
-    boolean isKeyOn()    { return ~last_input_bits[0] & (1<<0); }
-    boolean isAdd9On()   { return ~last_input_bits[1] & (1<<0); }
-    boolean isFlat5On()  { return ~last_input_bits[2] & (1<<0); }
-    boolean isMidiChOn() { return ~last_input_bits[0] & (1<<1); }
-    boolean isM7On()     { return ~last_input_bits[1] & (1<<1); }
-    boolean is7On()      { return ~last_input_bits[2] & (1<<1); }
-    ButtonInput() {
+    boolean isKeyOn()    { return ~input_status[0] & (1<<0); }
+    boolean isAdd9On()   { return ~input_status[1] & (1<<0); }
+    boolean isFlat5On()  { return ~input_status[2] & (1<<0); }
+    boolean isMidiChOn() { return ~input_status[0] & (1<<1); }
+    boolean isM7On()     { return ~input_status[1] & (1<<1); }
+    boolean is7On()      { return ~input_status[2] & (1<<1); }
+    ButtonInput(void (*pressed)(byte), void (*released)(byte)) {
       memset(waiting_after_off, 0, sizeof(waiting_after_off));
-      memset(last_input_bits, 0xFF, sizeof(last_input_bits));
-      pressed = released = NULL;
+      memset(input_status, 0xFF, sizeof(input_status));
+      this->pressed = pressed;
+      this->released = released;
     }
     void setup() {
       DDRB  &= ~PORTB_BUTTON_MASK; // Set 0 (INPUT)
       PORTB |= PORTB_BUTTON_MASK;  // Set 1 to enable internal pullup resistor
     }
-    void setHandlePressed(void (*handler)(byte)) { pressed = handler; }
-    void setHandleReleased(void (*handler)(byte)) { released = handler; }
     void scan(HC138Decoder *decoder) {
       byte new_input = PINB | ~PORTB_BUTTON_MASK;
       byte index = decoder->getInput();
-      byte *last = last_input_bits + index;
-      byte change = new_input ^ *last;
+      byte *input = input_status + index;
+      byte change = *input ^ new_input;
       if( change == 0 ) return;
+      *input = new_input;
       for( byte mask = 1; mask < PORTB_BUTTON_MASK; mask <<= 1, index += 8 ) {
         if( (change & mask) == 0 ) continue;
         byte *waiting = waiting_after_off + index;
-        if( (new_input & mask) == 0 ) {
-          if (pressed != NULL) pressed(index);
-          *waiting = WAIT_TIMES; continue;
-        }
-        if( *waiting == 0 ) {
-          if (pressed != NULL) released(index);
-          continue;
-        }
-        new_input ^= mask; (*waiting)--;
+        if( (*input & mask) == 0 ) { pressed(index); *waiting = WAIT_TIMES; continue; }
+        if( *waiting ) { *input ^= mask; (*waiting)--; continue; }
+        released(index);
       }
-      *last = new_input;
     }
 };
 
