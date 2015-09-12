@@ -85,7 +85,7 @@ class MusicalChord : public MusicalNote {
     }
     MusicalChord(
       KeySignature key_sig,
-      char offset = 0, char offset3 = 0,
+      char offset  = 0, char offset3 = 0,
       char offset5 = 0, char offset7 = 0,
       boolean has9 = false
     ) {
@@ -99,13 +99,14 @@ class MusicalChord : public MusicalNote {
     boolean equals(MusicalChord *chord) {
       return ! memcmp( this, chord, sizeof(MusicalChord) );
     }
+    boolean isSus4() { return offset3 > 0; }
     char get3rdNote() { return note_value +  4 + offset3; }
     char get5thNote() { return note_value +  7 + offset5; }
     char get7thNote() { return note_value + 12 + offset7; }
     char get9thNote() { return note_value + (has9?14:12); }
-    char getNote(char i, int lower_bound) {
+    char getNote(byte i, int lower_bound) {
       switch(i) {
-      case 0: return shiftOctave( note_value, lower_bound );
+      case 0: return shiftOctave( note_value,   lower_bound );
       case 1: return shiftOctave( get3rdNote(), lower_bound );
       case 2: return shiftOctave( get5thNote(), lower_bound );
       case 3: return offset7==0?
@@ -117,10 +118,10 @@ class MusicalChord : public MusicalNote {
       case 5: return shiftOctave( note_value, lower_bound, -12 );
       }
     }
-    char getNote(char i) { return getNote( i, getLowerBound() ); }
+    char getNote(byte i) { return getNote( i, getLowerBound() ); }
     char getRandomNote() { return getNote(random(MAX_NOTES)); }
     void toNotes(char *notes, size_t n_notes, int lower_bound) {
-      for(int i=0; i<n_notes; i++) notes[i] = getNote(i, lower_bound);
+      for(byte i=0; i<n_notes; i++) notes[i] = getNote(i, lower_bound);
     }
     void toNotes(char *notes, size_t n_notes) {
       toNotes(notes, n_notes, getLowerBound());

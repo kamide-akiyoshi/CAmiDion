@@ -28,6 +28,13 @@
 //#define LCD_ROWS 2     // default is 2
 //#define LCD_COLS 16    // default is 8 in I2C LCD, 16 in HD44780
 
+// MIDI Velocities
+#define NOTE_VELOCITY 100
+#define ARPEGGIO_VELOCITY 100
+#define DRUM_VELOCITY 100
+
+#define DRUM_NOTE_NUMBER 36; // Bass Drum 1
+
 // Automatic definition
 #if defined(USE_MIDI_IN) || defined(USE_MIDI_OUT)
 #define USE_MIDI
