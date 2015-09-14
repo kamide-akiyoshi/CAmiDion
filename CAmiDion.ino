@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150912
+//  ver.20150914
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -734,7 +734,7 @@ void loop() {
     led_viewport.lightOn(&decoder);
 #endif
     button_input.scan(&handler, &decoder);
-    PWM_SYNTH.updateEnvelopeStatus();
+    PWM_SYNTH.update();
   }
 #ifdef USE_MIDI_IN
   MIDI.read();
