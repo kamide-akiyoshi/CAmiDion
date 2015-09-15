@@ -17,8 +17,6 @@
 //#define USE_LCD_VIA_PARALLEL // HD44780 compatible LCD vid parallel interface
 //
 #define PWMDAC_OUTPUT_PIN 3        // PWMDAC_Synth output pin# in Arduino
-//#define PWMDAC_SYNTH_POLYPHONY 6 // Uncomment and edit if you want
-//#define NOTE_A_FREQUENCY 440
 //
 // Octave slider analog pin# in Arduino
 //   If you do not have octave slider, comment this out

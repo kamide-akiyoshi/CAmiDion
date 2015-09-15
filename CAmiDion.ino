@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150914
+//  ver.20150915
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -12,6 +12,7 @@
 #include <limits.h>
 
 #include <PWMDAC_Synth.h>
+PWMDAC_CREATE_DEFAULT_INSTANCE();
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
 extern PROGMEM const byte guitarWavetable[];
 extern PROGMEM const byte randomWavetable[];
@@ -27,9 +28,9 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 
 #ifdef USE_LED
 #include "LED.h"
-NoteCountableLedStatus led_main = NoteCountableLedStatus();
-LedStatus led_key  = LedStatus();
-LedStatus led_ctrl = LedStatus();
+NoteCountableLedStatus led_main;
+LedStatus led_key;
+LedStatus led_ctrl;
 LedViewport led_viewport = LedViewport(&led_main);
 #endif
 
@@ -44,7 +45,7 @@ LedViewport led_viewport = LedViewport(&led_main);
 #include <LiquidCrystal.h>
 #endif
 #include "CAmiDionLCD.h"
-CAmiDionLCD lcd = CAmiDionLCD();
+CAmiDionLCD lcd;
 #endif
 
 
@@ -163,8 +164,6 @@ class WaveSelecter {
     }
 };
 
-WaveSelecter wave_selecter = WaveSelecter();
-
 // MIDI IN receive callbacks
 void HandleNoteOff(byte channel, byte pitch, byte velocity) {
   PWM_SYNTH.noteOff(channel,pitch,velocity);
@@ -241,6 +240,9 @@ class NoteButtonEntry : public MidiSender {
       free(notes); n_notes = 0;
     }
 };
+
+
+WaveSelecter wave_selecter;
 
 class Arpeggiator : public MidiSender {
   protected:
@@ -328,7 +330,6 @@ class Arpeggiator : public MidiSender {
       }
     }
 };
-Arpeggiator arpeggiator = Arpeggiator();
 
 class Drum {
   protected:
@@ -377,7 +378,10 @@ class Drum {
 #endif
     }
 };
-Drum drum = Drum();
+
+
+Arpeggiator arpeggiator;
+Drum drum;
 
 #define US_PER_MINUTE  (60000000ul) // microseconds per minute
 class Metronome {
@@ -460,7 +464,6 @@ class Metronome {
 #endif
     }
 };
-Metronome metronome = Metronome();
 
 class NoteButtons {
   protected:
@@ -480,7 +483,6 @@ class NoteButtons {
     }
   public:
     NoteButtons() {
-      for(byte i=0; i<NumberOf(buttons); i++) buttons[i] = NoteButtonEntry();
       mode = MODE_POLY;
 #ifdef USE_LED
       led_main.setOn(LedStatus::RIGHT);
@@ -554,9 +556,11 @@ class NoteButtons {
     }
 };
 
-NoteButtons note_buttons = NoteButtons();
-ButtonInput button_input = ButtonInput();
-KeySignature key_signature = KeySignature();
+
+KeySignature key_signature;
+ButtonInput button_input;
+Metronome metronome;
+NoteButtons note_buttons;
 
 class MyButtonHandler : public ButtonHandler {
   protected:
