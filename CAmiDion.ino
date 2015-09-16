@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150915
+//  ver.20150916
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -12,7 +12,7 @@
 #include <limits.h>
 
 #include <PWMDAC_Synth.h>
-PWMDAC_CREATE_DEFAULT_INSTANCE();
+PWMDAC_INSTANCE;
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
 extern PROGMEM const byte guitarWavetable[];
 extern PROGMEM const byte randomWavetable[];
@@ -51,13 +51,13 @@ CAmiDionLCD lcd;
 
 PROGMEM const byte * const wavetables[] = {
 #ifdef OCTAVE_ANALOG_PIN
-  PWM_SYNTH.sawtoothWavetable,
-  PWM_SYNTH.squareWavetable,
+  PWMDACSynth::sawtoothWavetable,
+  PWMDACSynth::squareWavetable,
   guitarWavetable,
-  PWM_SYNTH.sineWavetable,
-  PWM_SYNTH.triangleWavetable,
+  PWMDACSynth::sineWavetable,
+  PWMDACSynth::triangleWavetable,
 #endif
-  PWM_SYNTH.shepardToneSineWavetable,
+  PWMDACSynth::shepardToneSineWavetable,
   shepardToneSawtoothWavetable,
   randomWavetable,
 };
@@ -66,7 +66,7 @@ class WaveSelecter {
     char selected_waveforms[16];
     byte current_midi_channel; // 1==CH1, ...
     EnvelopeParam *getEnvParam(byte ch) {
-      return &(PWM_SYNTH.getChannel(ch)->env_param);
+      return &(PWMDACSynth::getChannel(ch)->env_param);
     }
     EnvelopeParam *getEnvParam() {
       return getEnvParam(current_midi_channel);
@@ -87,7 +87,7 @@ class WaveSelecter {
       memset(selected_waveforms, 0, sizeof(selected_waveforms));
     }
     void setup() {
-      PWM_SYNTH.setWave( (byte *)pgm_read_word(wavetables) );
+      PWMDACSynth::setWave( (byte *)pgm_read_word(wavetables) );
       changeWaveform(10, NumberOf(wavetables)-1); // set MIDI Ch.10 to random wave noise
       for( byte i=1; i<=16; i++ ) {
         EnvelopeParam *ep = getEnvParam(i);
@@ -134,7 +134,7 @@ class WaveSelecter {
         *selected_waveform += NumberOf(wavetables);
       else if (*selected_waveform >= NumberOf(wavetables))
         *selected_waveform -= NumberOf(wavetables);
-      PWM_SYNTH.getChannel(midi_channel)->wavetable
+      PWMDACSynth::getChannel(midi_channel)->wavetable
         = (PROGMEM const byte *)pgm_read_word(wavetables + *selected_waveform);
       if(midi_channel == current_midi_channel) showWaveform();
     }
@@ -166,7 +166,7 @@ class WaveSelecter {
 
 // MIDI IN receive callbacks
 void HandleNoteOff(byte channel, byte pitch, byte velocity) {
-  PWM_SYNTH.noteOff(channel,pitch,velocity);
+  PWMDACSynth::noteOff(channel,pitch,velocity);
 #ifdef USE_LED
   led_main.noteOff(pitch);
 #endif
@@ -176,7 +176,7 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
     HandleNoteOff(channel,pitch,velocity);
     return;
   }
-  PWM_SYNTH.noteOn(channel,pitch,velocity);
+  PWMDACSynth::noteOn(channel,pitch,velocity);
 #ifdef USE_LED
   led_main.noteOn(pitch);
 #endif
@@ -352,7 +352,7 @@ class Drum {
     Drum() { is_on = false; note = -1; }
     void noteOff() {
       if( note < 0 ) return;
-      PWM_SYNTH.noteOff(MIDI_CH, note, VELOCITY);
+      PWMDACSynth::noteOff(MIDI_CH, note, VELOCITY);
 #ifdef USE_MIDI_OUT
       MIDI.sendNoteOff(MIDI_NOTE, VELOCITY, MIDI_CH);
 #endif
@@ -363,7 +363,7 @@ class Drum {
     }
     void noteOn() {
       if( ! is_on ) return;
-      PWM_SYNTH.noteOn(MIDI_CH, note = 0, VELOCITY);
+      PWMDACSynth::noteOn(MIDI_CH, note = 0, VELOCITY);
 #ifdef USE_MIDI_OUT
       MIDI.sendNoteOn(MIDI_NOTE, VELOCITY, MIDI_CH);
 #endif
@@ -703,7 +703,7 @@ MyButtonHandler handler = MyButtonHandler();
 HC138Decoder decoder = HC138Decoder();
 
 void setup() {
-  PWM_SYNTH.setup();
+  PWMDACSynth::setup();
 #ifdef USE_LED
   led_key.setKeySignature(&key_signature);
 #endif
@@ -718,8 +718,8 @@ void setup() {
 #ifdef USE_MIDI_IN
   MIDI.setHandleNoteOff(HandleNoteOff);
   MIDI.setHandleNoteOn(HandleNoteOn);
-  MIDI.setHandlePitchBend(PWM_SYNTH.pitchBend);
-  MIDI.setHandleControlChange(PWM_SYNTH.controlChange);
+  MIDI.setHandlePitchBend(PWMDACSynth::pitchBend);
+  MIDI.setHandleControlChange(PWMDACSynth::controlChange);
 #endif
   MIDI.begin(MIDI_CHANNEL_OMNI); // receives all MIDI channels
   MIDI.turnThruOff(); // Disable MIDI IN -> MIDI OUT mirroring
@@ -738,7 +738,7 @@ void loop() {
     led_viewport.lightOn(&decoder);
 #endif
     button_input.scan(&handler, &decoder);
-    PWM_SYNTH.update();
+    PWMDACSynth::update();
   }
 #ifdef USE_MIDI_IN
   MIDI.read();

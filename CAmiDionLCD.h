@@ -128,7 +128,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
     }
     void printEnvelope(EnvelopeParam *ep) {
       *bufp++ = 'a';
-      setHex(0xF - PWM_SYNTH.log2(ep->attack_speed));
+      setHex(0xF - PWMDACSynth::log2(ep->attack_speed));
       *bufp++ = 'd';
       setHex(ep->decay_time);
       *bufp++ = 's';
@@ -237,12 +237,12 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       *bufp++ = midi_channel + '0';
       *bufp++ = ( channel_is_changing ? '>' : ':' );
       const char PROGMEM *wavename;
-      if( wavetable == PWM_SYNTH.sawtoothWavetable ) {
+      if( wavetable == PWMDACSynth::sawtoothWavetable ) {
         createChar_P( 2, sawtooth_left );
         createChar_P( 3, sawtooth_right );
         wavename = wavename23;
       }
-      else if( wavetable == PWM_SYNTH.squareWavetable ) {
+      else if( wavetable == PWMDACSynth::squareWavetable ) {
         createChar_P( 2, square_up );
         createChar_P( 3, square_down );
         wavename = wavename23;
@@ -250,16 +250,16 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       else if( wavetable == guitarWavetable ) {
         wavename = wavename_guitar;
       }
-      else if( wavetable == PWM_SYNTH.sineWavetable ) {
+      else if( wavetable == PWMDACSynth::sineWavetable ) {
         createChar_P( 2, sine_up );
         createChar_P( 3, sine_down );
         wavename = wavename23;
       }
-      else if( wavetable == PWM_SYNTH.triangleWavetable ) {
+      else if( wavetable == PWMDACSynth::triangleWavetable ) {
         createChar_P( 2, backslash_pattern );
         wavename = wavename_triangle;
       }
-      else if( wavetable == PWM_SYNTH.shepardToneSineWavetable ) {
+      else if( wavetable == PWMDACSynth::shepardToneSineWavetable ) {
         wavename = wavename_shepard;
       }
       else if( wavetable == shepardToneSawtoothWavetable ) {
