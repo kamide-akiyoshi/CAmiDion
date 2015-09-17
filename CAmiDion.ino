@@ -9,8 +9,6 @@
 
 #include "CAmiDionConfig.h"
 
-#include <limits.h>
-
 #include <PWMDAC_Synth.h>
 PWMDAC_INSTANCE;
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
