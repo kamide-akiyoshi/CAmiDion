@@ -87,9 +87,9 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       memcpy_P( pattern_buf, data, sizeof(pattern_buf) );
       createChar(num, pattern_buf);
     }
-    void printKeySignature(KeySignature *ksp, boolean is_changing) {
+    void printKeySignature(KeySignature *ksp, char delimiter = ':') {
       setString("Key",3);
-      *bufp++ = (is_changing ? '>' : ':');
+      *bufp++ = delimiter;
       bufp = ksp->print(bufp);
       if( ksp->getCo5() == 0 ) *bufp++ = NATURAL;
 #if LCD_COLS >= 15
@@ -115,34 +115,26 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       setCursor(0,0);
       printLineBuffer();
     }
-    void printTempo(unsigned int bpm, boolean is_changing) {
+    void printTempo(unsigned int bpm, char delimiter = ':') {
 #if LCD_COLS >= 15
       setString("Tempo",5);
 #else
       *bufp++ = 'T';
 #endif
-      bufp += sprintf(bufp,"%c%ubpm    ",is_changing?'>':':',bpm);
+      bufp += sprintf(bufp,"%c%ubpm    ", delimiter, bpm);
       setCursor(0,0);
       printLineBuffer();
       clearChord();
     }
     void printEnvelope(EnvelopeParam *ep) {
-      *bufp++ = 'a';
-      setHex(0xF - PWMDACSynth::log2(ep->attack_speed));
-      *bufp++ = 'd';
-      setHex(ep->decay_time);
-      *bufp++ = 's';
-      setHex(ep->sustain_level >> 12);
-      *bufp++ = 'r';
-      setHex(ep->release_time);
+      *bufp++ = 'a'; setHex(0xF - PWMDACSynth::log2(ep->attack_speed));
+      *bufp++ = 'd'; setHex(ep->decay_time);
+      *bufp++ = 's'; setHex(ep->sustain_level >> 12);
+      *bufp++ = 'r'; setHex(ep->release_time);
       setCursor(0,1);
       printLineBuffer();
     }
-    void printWaveform(
-      byte midi_channel,
-      PROGMEM const byte wavetable[],
-      boolean channel_is_changing
-    ) {
+    void printWaveform(byte midi_channel, PROGMEM const byte wavetable[], char delimiter = ':') {
       PROGMEM static const uint8_t random_pattern[] = {
         B10101,
         B01010,
@@ -231,13 +223,12 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       static const char wavename_triangle[] PROGMEM = "/\x02/\x02/\x02/\x02/\x02";
       static const char wavename_guitar[] PROGMEM = "Guitar";
 #endif
-      *bufp++ = 'C';
-      *bufp++ = 'h';
+      setString("Ch",2);
       if( midi_channel >= 10 ) {
         *bufp++ = '1'; midi_channel -= 10;
       }
       *bufp++ = midi_channel + '0';
-      *bufp++ = ( channel_is_changing ? '>' : ':' );
+      *bufp++ = delimiter;
       const char PROGMEM *wavename;
       if( wavetable == shepardToneSineWavetable ) {
         wavename = wavename_shepard;

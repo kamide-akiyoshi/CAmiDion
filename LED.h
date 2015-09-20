@@ -12,8 +12,8 @@ class LedStatus {
       byte values8[2];
     } leds;
     unsigned int pitchMask(byte pitch) { return 0x0010 << pitch; }
-    void allNotesOff() { leds.value16 &= 0x000F; }
   public:
+    static const unsigned int NOTE_MASK = 0xFFF0;
     enum LedPosition {LEFT, CENTER, RIGHT, UPPER};
     enum LedByte {LOW_BYTE, HIGH_BYTE};
     LedStatus() { this->leds.value16 = 0; }
@@ -24,6 +24,8 @@ class LedStatus {
     void setOff(LedPosition pos) { cbi(leds.values8[0], pos); }
     void noteOn(byte pitch)  { leds.value16 |= pitchMask(pitch); }
     void noteOff(byte pitch) { leds.value16 &= ~pitchMask(pitch); }
+    void allNotesOff() { leds.value16 &= ~NOTE_MASK; }
+    boolean isNoteOn() { return leds.value16 & NOTE_MASK; }
     void setMidiChannel(byte ch0) { leds.value16 = 1 << ch0; }
     void setKeySignature(KeySignature *ksp) {
       allNotesOff(); noteOn(ksp->getNote());
@@ -32,11 +34,10 @@ class LedStatus {
 
 class NoteCountableLedStatus : public LedStatus {
   protected:
-    byte counts[12];
+    char counts[12];
+    void resetCount() { memset(counts,0,NumberOf(counts)); }
   public:
-    NoteCountableLedStatus() : LedStatus() {
-      memset(counts,0,NumberOf(counts));
-    }
+    NoteCountableLedStatus() : LedStatus() { resetCount(); }
     void noteOff(byte pitch) {
       pitch = PWMDACSynth::musicalMod12(pitch);
       if (--counts[pitch] == 0) LedStatus::noteOff(pitch);

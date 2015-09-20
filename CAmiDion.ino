@@ -68,7 +68,6 @@ LedViewport led_viewport = LedViewport(&led_main);
 CAmiDionLCD lcd;
 #endif
 
-
 class WaveSelecter {
   protected:
     char selected_waveforms[16];
@@ -110,17 +109,14 @@ class WaveSelecter {
       led_ctrl.setMidiChannel(ch0);
 #endif
 #ifdef USE_LCD
-      showWaveform(true);
+      showWaveform('>');
       showEnvelope();
 #endif
     }
 #ifdef USE_LCD
-    void showWaveform(boolean channel_is_changing = false) {
-      lcd.printWaveform(
-        current_midi_channel,
-        (PROGMEM const byte *)pgm_read_word(
-          wavetables + selected_waveforms[current_midi_channel - 1]),
-        channel_is_changing);
+    void showWaveform(char delimiter = ':') {
+      lcd.printWaveform( current_midi_channel, (PROGMEM const byte *)pgm_read_word(
+        wavetables + selected_waveforms[current_midi_channel - 1]), delimiter);
     }
     void showEnvelope() { lcd.printEnvelope(getEnvParam()); }
 #endif
@@ -133,7 +129,7 @@ class WaveSelecter {
         *selected_waveform -= NumberOf(wavetables);
       PWMDACSynth::getChannel(midi_channel)->wavetable
         = (PROGMEM const byte *)pgm_read_word(wavetables + *selected_waveform);
-      if(midi_channel == current_midi_channel) showWaveform();
+      if(midi_channel == current_midi_channel) showWaveform('>');
     }
     void changeWaveform(char offset) {
       changeWaveform(current_midi_channel, offset);
@@ -308,7 +304,7 @@ class Arpeggiator : public MidiSender {
         led_main.setOff(LedStatus::LEFT);
 #endif
 #ifdef USE_LCD
-        wave_selecter.showWaveform(false);
+        wave_selecter.showWaveform();
 #endif
       }
     }
@@ -447,7 +443,7 @@ class Metronome {
       if(offset) setBpm(bpm + offset);
       sync();
 #ifdef USE_LCD
-      lcd.printTempo(bpm, true);
+      lcd.printTempo(bpm, '>');
 #endif
     }
     void tap( unsigned long us = micros() ) {
@@ -457,7 +453,7 @@ class Metronome {
       }
       sync(us_last_tapped = us);
 #ifdef USE_LCD
-      lcd.printTempo(bpm, false);
+      lcd.printTempo(bpm);
 #endif
     }
 };
@@ -532,7 +528,7 @@ class NoteButtons {
         led_main.setOff(LedStatus::RIGHT);
 #endif
 #ifdef USE_LCD
-        wave_selecter.showWaveform(false);
+        wave_selecter.showWaveform();
 #endif
       }
     }
@@ -569,15 +565,15 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_key);
 #endif
 #ifdef USE_LCD
-          lcd.printTempo( metronome.getBpm(), button_input.isOn(ButtonInput::ADD9) );
-          lcd.printKeySignature( &key_signature, ! button_input.isOn(ButtonInput::ADD9) );
+          lcd.printTempo( metronome.getBpm(), button_input.isOn(ButtonInput::ADD9)?'>':':' );
+          lcd.printKeySignature( &key_signature, button_input.isOn(ButtonInput::ADD9)?':':'>' );
 #endif
           break;
         case ButtonInput::ADD9:
 #ifdef USE_LCD
           if( ! button_input.isOn(ButtonInput::KEY) ) break;
-          lcd.printTempo( metronome.getBpm(), true );
-          lcd.printKeySignature( &key_signature, false );
+          lcd.printTempo( metronome.getBpm(), '>' );
+          lcd.printKeySignature(&key_signature);
 #endif
           break;
         case ButtonInput::MIDI_CH:
@@ -616,17 +612,17 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_main);
 #endif
 #ifdef USE_LCD
-          lcd.printKeySignature( &key_signature, false );
+          lcd.printKeySignature(&key_signature);
           if( button_input.isOn(ButtonInput::ADD9) ) {
-            lcd.printTempo( metronome.getBpm(), false );
+            lcd.printTempo(metronome.getBpm());
           }
 #endif
           break;
         case ButtonInput::ADD9:
 #ifdef USE_LCD
           if( ! button_input.isOn(ButtonInput::KEY) ) break;
-          lcd.printTempo( metronome.getBpm(), false );
-          lcd.printKeySignature( &key_signature, true );
+          lcd.printTempo(metronome.getBpm());
+          lcd.printKeySignature( &key_signature, '>' );
 #endif
           break;
         case ButtonInput::MIDI_CH:
@@ -634,8 +630,8 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_main);
 #endif
 #ifdef USE_LCD
-          wave_selecter.showWaveform(false);
-          lcd.printKeySignature( &key_signature, false );
+          wave_selecter.showWaveform();
+          lcd.printKeySignature(&key_signature);
 #endif
           break;
       }
@@ -657,7 +653,7 @@ class MyButtonHandler : public ButtonHandler {
         led_key.setKeySignature(&key_signature);
 #endif
 #ifdef USE_LCD
-        lcd.printKeySignature(&key_signature, true);
+        lcd.printKeySignature(&key_signature, '>');
 #endif
         return;
       }
@@ -700,13 +696,16 @@ MyButtonHandler handler = MyButtonHandler();
 HC138Decoder decoder = HC138Decoder();
 
 void setup() {
+#ifdef OCTAVE_ANALOG_PIN
+  randomSeed(analogRead(OCTAVE_ANALOG_PIN));
+#endif
   PWMDACSynth::setup();
 #ifdef USE_LED
   led_key.setKeySignature(&key_signature);
 #endif
 #ifdef USE_LCD
   lcd.setup();
-  lcd.printKeySignature(&key_signature, false);
+  lcd.printKeySignature(&key_signature);
 #endif
   wave_selecter.setup();
   decoder.setup();
@@ -720,8 +719,10 @@ void setup() {
 #endif
   MIDI.begin(MIDI_CHANNEL_OMNI); // receives all MIDI channels
   MIDI.turnThruOff(); // Disable MIDI IN -> MIDI OUT mirroring
+#ifdef MIDI_ENABLE_PIN
   pinMode(MIDI_ENABLE_PIN,OUTPUT);
   digitalWrite(MIDI_ENABLE_PIN,HIGH); // enable MIDI port
+#endif
 #endif
 }
 
