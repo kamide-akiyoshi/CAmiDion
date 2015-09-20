@@ -1,5 +1,6 @@
 //
 // Additional Wavetables
+//
 PROGMEM const byte shepardToneSawtoothWavetable[] = {
 0,  6,  6,  12, 6,  12, 12, 18,
 5,  11, 11, 18, 11, 17, 17, 24,
@@ -34,6 +35,7 @@ PROGMEM const byte shepardToneSawtoothWavetable[] = {
 18, 24, 24, 30, 24, 30, 30, 36,
 24, 30, 30, 36, 30, 36, 36, 42,
 };
+
 PROGMEM const byte guitarWavetable[] = {
 23, 24, 24, 25, 25, 25, 26, 26,
 26, 27, 27, 28, 29, 30, 32, 33,
@@ -68,6 +70,7 @@ PROGMEM const byte guitarWavetable[] = {
 13, 13, 14, 14, 14, 15, 15, 16,
 17, 17, 18, 19, 20, 21, 21, 22,
 };
+
 PROGMEM const byte randomWavetable[] = {
 39, 22, 21, 9,  23, 13, 28, 31,
 15, 30, 40, 8,  29, 26, 27, 8,
@@ -102,5 +105,4 @@ PROGMEM const byte randomWavetable[] = {
 15, 37, 19, 34, 36, 8,  19, 10,
 32, 14, 19, 1,  1,  35, 35, 3,
 };
-
 

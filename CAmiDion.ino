@@ -10,9 +10,9 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-
+const EnvelopeParam DEFAULT_ENV_PARAM = {0x1000, 10, 0, 8};
 #if defined(OCTAVE_ANALOG_PIN)
-PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE);
+PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE, DEFAULT_ENV_PARAM);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
 PWMDAC_CREATE_WAVETABLE(triangleWavetable, PWMDAC_TRIANGLE_WAVE);
 PWMDAC_CREATE_WAVETABLE(sineWavetable, PWMDAC_SINE_WAVE);
@@ -21,8 +21,8 @@ extern PROGMEM const byte guitarWavetable[];
 #else
 PWMDAC_CREATE_INSTANCE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
 #endif
-extern PROGMEM const byte shepardToneSawtoothWavetable[];
 extern PROGMEM const byte randomWavetable[];
+extern PROGMEM const byte shepardToneSawtoothWavetable[];
 
 PROGMEM const byte * const wavetables[] = {
 #if defined(OCTAVE_ANALOG_PIN)
@@ -96,21 +96,11 @@ class WaveSelecter {
     }
     void setup() {
       changeWaveform(10, NumberOf(wavetables)-1); // set MIDI Ch.10 to random wave noise
-      for( byte i=1; i<=16; i++ ) {
-        EnvelopeParam *ep = getEnvParam(i);
-        if( i == 10 ) {
-          ep->attack_speed = 0xFFFF;
-          ep->decay_time = 5;
-          ep->sustain_level = 0;
-          ep->release_time = 5;
-        }
-        else {
-          ep->attack_speed = 0x1000;
-          ep->decay_time = 10;
-          ep->sustain_level = 0;
-          ep->release_time = 8;
-        }
-      }
+      EnvelopeParam *ep = getEnvParam(10);
+      ep->attack_speed = 0xFFFF;
+      ep->decay_time = 5;
+      ep->sustain_level = 0;
+      ep->release_time = 5;
     }
     byte getCurrentMidiChannel() { return current_midi_channel; }
     void changeCurrentMidiChannel(char offset) {
