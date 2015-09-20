@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150916
+//  ver.20150920
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -10,10 +10,32 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-PWMDAC_INSTANCE;
-extern PROGMEM const byte shepardToneSawtoothWavetable[];
+
+#if defined(OCTAVE_ANALOG_PIN)
+PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE);
+PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
+PWMDAC_CREATE_WAVETABLE(triangleWavetable, PWMDAC_TRIANGLE_WAVE);
+PWMDAC_CREATE_WAVETABLE(sineWavetable, PWMDAC_SINE_WAVE);
+PWMDAC_CREATE_WAVETABLE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
 extern PROGMEM const byte guitarWavetable[];
+#else
+PWMDAC_CREATE_INSTANCE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
+#endif
+extern PROGMEM const byte shepardToneSawtoothWavetable[];
 extern PROGMEM const byte randomWavetable[];
+
+PROGMEM const byte * const wavetables[] = {
+#if defined(OCTAVE_ANALOG_PIN)
+  sawtoothWavetable,
+  squareWavetable,
+  guitarWavetable,
+  sineWavetable,
+  triangleWavetable,
+#endif
+  shepardToneSineWavetable,
+  shepardToneSawtoothWavetable,
+  randomWavetable,
+};
 
 #if defined(USE_MIDI)
 #include <MIDI.h>
@@ -24,7 +46,7 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 #include "decoder.h"
 #include "button.h"
 
-#ifdef USE_LED
+#if defined(USE_LED)
 #include "LED.h"
 NoteCountableLedStatus led_main;
 LedStatus led_key;
@@ -47,18 +69,6 @@ CAmiDionLCD lcd;
 #endif
 
 
-PROGMEM const byte * const wavetables[] = {
-#ifdef OCTAVE_ANALOG_PIN
-  PWMDACSynth::sawtoothWavetable,
-  PWMDACSynth::squareWavetable,
-  guitarWavetable,
-  PWMDACSynth::sineWavetable,
-  PWMDACSynth::triangleWavetable,
-#endif
-  PWMDACSynth::shepardToneSineWavetable,
-  shepardToneSawtoothWavetable,
-  randomWavetable,
-};
 class WaveSelecter {
   protected:
     char selected_waveforms[16];
@@ -85,7 +95,6 @@ class WaveSelecter {
       memset(selected_waveforms, 0, sizeof(selected_waveforms));
     }
     void setup() {
-      PWMDACSynth::setWave( (byte *)pgm_read_word(wavetables) );
       changeWaveform(10, NumberOf(wavetables)-1); // set MIDI Ch.10 to random wave noise
       for( byte i=1; i<=16; i++ ) {
         EnvelopeParam *ep = getEnvParam(i);

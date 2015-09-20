@@ -143,6 +143,16 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       PROGMEM const byte wavetable[],
       boolean channel_is_changing
     ) {
+      PROGMEM static const uint8_t random_pattern[] = {
+        B10101,
+        B01010,
+        B10101,
+        B01010,
+        B10101,
+        B01010,
+        B10101,
+        B00000,
+      };
       PROGMEM static const uint8_t sawtooth_left[] = {
         B00000,
         B00000,
@@ -161,6 +171,20 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00001,
         B00001,
         B00001,
+        B00000,
+      };
+      static const char wavename2[]  PROGMEM = "\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02";
+      static const char wavename_shepard[] PROGMEM = "Shepard Tone";
+      static const char wavename_triangle_shepard[] PROGMEM = "\x02\x03Shepard";
+#if defined(OCTAVE_ANALOG_PIN)
+      PROGMEM static const uint8_t backslash_pattern[] = {
+        B00000,
+        B10000,
+        B01000,
+        B00100,
+        B00010,
+        B00001,
+        B00000,
         B00000,
       };
       PROGMEM static const uint8_t square_up[] = {
@@ -203,32 +227,10 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00110,
         B00000,
       };
-      PROGMEM static const uint8_t random_pattern[] = {
-        B10101,
-        B01010,
-        B10101,
-        B01010,
-        B10101,
-        B01010,
-        B10101,
-        B00000,
-      };
-      PROGMEM static const uint8_t backslash_pattern[] = {
-        B00000,
-        B10000,
-        B01000,
-        B00100,
-        B00010,
-        B00001,
-        B00000,
-        B00000,
-      };
-      static const char wavename2[]  PROGMEM = "\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02";
       static const char wavename23[] PROGMEM = "\x02\x03\x02\x03\x02\x03\x02\x03\x02\x03";
       static const char wavename_triangle[] PROGMEM = "/\x02/\x02/\x02/\x02/\x02";
       static const char wavename_guitar[] PROGMEM = "Guitar";
-      static const char wavename_shepard[] PROGMEM = "Shepard Tone";
-      static const char wavename_triangle_shepard[] PROGMEM = "\x02\x03Shepard";
+#endif
       *bufp++ = 'C';
       *bufp++ = 'h';
       if( midi_channel >= 10 ) {
@@ -237,29 +239,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       *bufp++ = midi_channel + '0';
       *bufp++ = ( channel_is_changing ? '>' : ':' );
       const char PROGMEM *wavename;
-      if( wavetable == PWMDACSynth::sawtoothWavetable ) {
-        createChar_P( 2, sawtooth_left );
-        createChar_P( 3, sawtooth_right );
-        wavename = wavename23;
-      }
-      else if( wavetable == PWMDACSynth::squareWavetable ) {
-        createChar_P( 2, square_up );
-        createChar_P( 3, square_down );
-        wavename = wavename23;
-      }
-      else if( wavetable == guitarWavetable ) {
-        wavename = wavename_guitar;
-      }
-      else if( wavetable == PWMDACSynth::sineWavetable ) {
-        createChar_P( 2, sine_up );
-        createChar_P( 3, sine_down );
-        wavename = wavename23;
-      }
-      else if( wavetable == PWMDACSynth::triangleWavetable ) {
-        createChar_P( 2, backslash_pattern );
-        wavename = wavename_triangle;
-      }
-      else if( wavetable == PWMDACSynth::shepardToneSineWavetable ) {
+      if( wavetable == shepardToneSineWavetable ) {
         wavename = wavename_shepard;
       }
       else if( wavetable == shepardToneSawtoothWavetable ) {
@@ -271,6 +251,30 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         createChar_P( 2, random_pattern );
         wavename = wavename2;
       }
+#if defined(OCTAVE_ANALOG_PIN)
+      else if( wavetable == sawtoothWavetable ) {
+        createChar_P( 2, sawtooth_left );
+        createChar_P( 3, sawtooth_right );
+        wavename = wavename23;
+      }
+      else if( wavetable == squareWavetable ) {
+        createChar_P( 2, square_up );
+        createChar_P( 3, square_down );
+        wavename = wavename23;
+      }
+      else if( wavetable == guitarWavetable ) {
+        wavename = wavename_guitar;
+      }
+      else if( wavetable == sineWavetable ) {
+        createChar_P( 2, sine_up );
+        createChar_P( 3, sine_down );
+        wavename = wavename23;
+      }
+      else if( wavetable == triangleWavetable ) {
+        createChar_P( 2, backslash_pattern );
+        wavename = wavename_triangle;
+      }
+#endif
       size_t len = strlen_P(wavename);
       if( len > LCD_COLS ) len = LCD_COLS;
       memcpy_P( bufp, wavename, len );
