@@ -14,7 +14,6 @@ class ButtonHandler {
 };
 class ButtonInput {
   protected:
-    static const byte WAIT_TIMES = 12; // Anti-chattering release wait count
     static const byte PORTB_BUTTON_MASK = 0b00111111; // Arduino port D8..13
     byte waiting_after_off[48];
     byte input_status[8];
@@ -47,11 +46,14 @@ class ButtonInput {
         if( (change & mask) == 0 ) continue;
         byte *waiting = waiting_after_off + index;
         if( (*input & mask) == 0 ) {
-          handler->pressed(index); *waiting = WAIT_TIMES; continue;
+          handler->pressed(index);
+          *waiting = BUTTON_RELEASE_WAIT_TIMES;
+          continue;
         }
         if( *waiting == 0 ) {
           handler->released(index); continue;
         }
+        // Cancel bit, and countdown
         *input ^= mask; (*waiting)--;
       }
     }

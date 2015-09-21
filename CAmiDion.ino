@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150920
+//  ver.20150921
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -49,8 +49,8 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 #if defined(USE_LED)
 #include "LED.h"
 NoteCountableLedStatus led_main;
-LedStatus led_key;
-LedStatus led_ctrl;
+NoteLedStatus led_key;
+MidiChLedStatus led_ctrl;
 LedViewport led_viewport = LedViewport(&led_main);
 #endif
 
@@ -253,7 +253,7 @@ class Arpeggiator : public MidiSender {
       button_index = NULL_BUTTON;
       mode = MODE_HOLD;
 #ifdef USE_LED
-      led_key.setOn(LedStatus::LEFT);
+      led_key.setOn(NoteLedStatus::LEFT);
 #endif
     }
     boolean isNoteOn() { return mode & MODE_NOTE_ON; }
@@ -270,8 +270,8 @@ class Arpeggiator : public MidiSender {
       mode |= MODE_NOTE_ON;
     }
 #ifdef USE_LED
-    void beatOff() { if (isOn()) led_main.setOff(LedStatus::LEFT); }
-    void beatOn()  { if (isOn()) led_main.setOn(LedStatus::LEFT); }
+    void beatOff() { if (isOn()) led_main.setOff(NoteLedStatus::LEFT); }
+    void beatOn()  { if (isOn()) led_main.setOn(NoteLedStatus::LEFT); }
 #endif
     boolean isFree() { return button_index == NULL_BUTTON; }
     void pressed(byte button_index, char midi_channel, MusicalChord *chord) {
@@ -293,7 +293,7 @@ class Arpeggiator : public MidiSender {
 #endif
       if ( isOn() ) {
 #ifdef USE_LED
-        led_main.setOn(LedStatus::LEFT);
+        led_main.setOn(NoteLedStatus::LEFT);
 #endif
 #ifdef USE_LCD
         lcd.printChord();
@@ -301,7 +301,7 @@ class Arpeggiator : public MidiSender {
       } else {
         button_index = NULL_BUTTON;
 #ifdef USE_LED
-        led_main.setOff(LedStatus::LEFT);
+        led_main.setOff(NoteLedStatus::LEFT);
 #endif
 #ifdef USE_LCD
         wave_selecter.showWaveform();
@@ -313,12 +313,12 @@ class Arpeggiator : public MidiSender {
       mode ^= MODE_HOLD;
       if ( isHoldMode() )
 #ifdef USE_LED
-        led_key.setOn(LedStatus::LEFT);
+        led_key.setOn(NoteLedStatus::LEFT);
 #endif
       else {
         button_index = NULL_BUTTON;
 #ifdef USE_LED
-        led_key.setOff(LedStatus::LEFT);
+        led_key.setOff(NoteLedStatus::LEFT);
 #endif
       }
     }
@@ -333,12 +333,12 @@ class Drum {
     boolean is_on;
 #ifdef USE_LED
     void ledOn() {
-      led_main.setOn(LedStatus::CENTER);
-      led_key.setOn(LedStatus::CENTER);
+      led_main.setOn(NoteLedStatus::CENTER);
+      led_key.setOn(NoteLedStatus::CENTER);
     }
     void ledOff() {
-      led_main.setOff(LedStatus::CENTER);
-      led_key.setOff(LedStatus::CENTER);
+      led_main.setOff(NoteLedStatus::CENTER);
+      led_key.setOff(NoteLedStatus::CENTER);
     }
 #endif
   public:
@@ -389,16 +389,16 @@ class Metronome {
     void noteOff() {
       drum.noteOff();
 #ifdef USE_LED
-      led_main.setOff(LedStatus::UPPER);
-      led_key.setOff(LedStatus::UPPER);
+      led_main.setOff(NoteLedStatus::UPPER);
+      led_key.setOff(NoteLedStatus::UPPER);
       arpeggiator.beatOff();
 #endif
     }
     void noteOn() {
       drum.noteOn();
 #ifdef USE_LED
-      led_main.setOn(LedStatus::UPPER);
-      led_key.setOn(LedStatus::UPPER);
+      led_main.setOn(NoteLedStatus::UPPER);
+      led_key.setOn(NoteLedStatus::UPPER);
       arpeggiator.beatOn();
 #endif
     }
@@ -478,7 +478,7 @@ class NoteButtons {
     NoteButtons() {
       mode = MODE_POLY;
 #ifdef USE_LED
-      led_main.setOn(LedStatus::RIGHT);
+      led_main.setOn(NoteLedStatus::RIGHT);
 #endif
     }
     void pressed(byte button_index, byte midi_channel, MusicalChord *chord) {
@@ -518,14 +518,14 @@ class NoteButtons {
 #endif
       if ( isPolyMode() ) {
 #ifdef USE_LED
-        led_main.setOn(LedStatus::RIGHT);
+        led_main.setOn(NoteLedStatus::RIGHT);
 #endif
 #ifdef USE_LCD
         lcd.printChord();
 #endif
       } else {
 #ifdef USE_LED
-        led_main.setOff(LedStatus::RIGHT);
+        led_main.setOff(NoteLedStatus::RIGHT);
 #endif
 #ifdef USE_LCD
         wave_selecter.showWaveform();
@@ -537,13 +537,13 @@ class NoteButtons {
       mode ^= MODE_HOLD;
       if ( isHoldMode() ) {
 #ifdef USE_LED
-        led_key.setOn(LedStatus::RIGHT);
+        led_key.setOn(NoteLedStatus::RIGHT);
 #endif
       }
       else {
         noteOff();
 #ifdef USE_LED
-        led_key.setOff(LedStatus::RIGHT);
+        led_key.setOff(NoteLedStatus::RIGHT);
 #endif
       }
     }
@@ -565,8 +565,12 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_key);
 #endif
 #ifdef USE_LCD
-          lcd.printTempo( metronome.getBpm(), button_input.isOn(ButtonInput::ADD9)?'>':':' );
-          lcd.printKeySignature( &key_signature, button_input.isOn(ButtonInput::ADD9)?':':'>' );
+          lcd.printTempo(
+            metronome.getBpm(),
+            button_input.isOn(ButtonInput::ADD9)?'>':':' );
+          lcd.printKeySignature(
+            &key_signature,
+            button_input.isOn(ButtonInput::ADD9)?':':'>' );
 #endif
           break;
         case ButtonInput::ADD9:
