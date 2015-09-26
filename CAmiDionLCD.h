@@ -127,9 +127,9 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       clearChord();
     }
     void printEnvelope(EnvelopeParam *ep) {
-      *bufp++ = 'a'; setHex(0xF - PWMDACSynth::log2(ep->attack_speed));
+      *bufp++ = 'a'; setHex(ep->attack_time);
       *bufp++ = 'd'; setHex(ep->decay_time);
-      *bufp++ = 's'; setHex(ep->sustain_level >> 12);
+      *bufp++ = 's'; setHex(ep->sustain_level >> 4);
       *bufp++ = 'r'; setHex(ep->release_time);
       setCursor(0,1);
       printLineBuffer();

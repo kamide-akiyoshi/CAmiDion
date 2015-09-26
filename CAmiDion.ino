@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150921
+//  ver.20150926
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -10,7 +10,7 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-const EnvelopeParam DEFAULT_ENV_PARAM = {0x1000, 10, 0, 8};
+const EnvelopeParam DEFAULT_ENV_PARAM = {4, 10, 0, 8};
 #if defined(OCTAVE_ANALOG_PIN)
 PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE, DEFAULT_ENV_PARAM);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
@@ -96,7 +96,7 @@ class WaveSelecter {
     void setup() {
       changeWaveform(10, NumberOf(wavetables)-1); // set MIDI Ch.10 to random wave noise
       EnvelopeParam *ep = getEnvParam(10);
-      ep->attack_speed = 0xFFFF;
+      ep->attack_time = 0;
       ep->decay_time = 5;
       ep->sustain_level = 0;
       ep->release_time = 5;
@@ -135,19 +135,14 @@ class WaveSelecter {
       changeWaveform(current_midi_channel, offset);
     }
     void changeAttack(char offset) {
-      unsigned int *asp = &(getEnvParam()->attack_speed);
-      if( offset > 0 ) { if( *asp <= 0x0001 ) *asp = 0x8000; else *asp >>= 1; }
-      else { if( *asp >= 0x8000 ) *asp = 0x0001; else *asp <<= 1; }
-#ifdef USE_LCD
-      showEnvelope();
-#endif
+      changeEnvTime( &(getEnvParam()->attack_time), offset );
     }
     void changeDecay(char offset) {
       changeEnvTime( &(getEnvParam()->decay_time), offset );
     }
     void changeSustain(char offset) {
-      unsigned int *slp = &(getEnvParam()->sustain_level);
-      if( offset > 0 ) *slp +=0x1000; else *slp -=0x1000;
+      byte *slp = &(getEnvParam()->sustain_level);
+      if( offset > 0 ) *slp +=0x10; else *slp -=0x10;
 #ifdef USE_LCD
       showEnvelope();
 #endif
