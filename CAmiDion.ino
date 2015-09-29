@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150926
+//  ver.20150929
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -11,6 +11,7 @@
 
 #include <PWMDAC_Synth.h>
 const EnvelopeParam DEFAULT_ENV_PARAM = {4, 10, 0, 8};
+const EnvelopeParam DRUM_ENV_PARAM = {0, 5, 0, 5};
 #if defined(OCTAVE_ANALOG_PIN)
 PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE, DEFAULT_ENV_PARAM);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
@@ -23,7 +24,6 @@ PWMDAC_CREATE_INSTANCE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
 #endif
 extern PROGMEM const byte randomWavetable[];
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
-
 PROGMEM const byte * const wavetables[] = {
 #if defined(OCTAVE_ANALOG_PIN)
   sawtoothWavetable,
@@ -69,38 +69,14 @@ CAmiDionLCD lcd;
 #endif
 
 class WaveSelecter {
-  protected:
-    char selected_waveforms[16];
-    byte current_midi_channel; // 1==CH1, ...
-    EnvelopeParam *getEnvParam(byte ch) {
-      return &(PWMDACSynth::getChannel(ch)->env_param);
-    }
-    EnvelopeParam *getEnvParam() {
-      return getEnvParam(current_midi_channel);
-    }
-    void changeEnvTime(byte *p, char offset) {
-      if( offset > 0 ) { if( *p >= 15 ) *p = 0; else (*p)++; }
-      else { if( *p <= 0 ) *p = 15; else (*p)--; }
-#ifdef USE_LCD
-      showEnvelope();
-#endif
-    }
   public:
-    WaveSelecter() {
-      current_midi_channel = 1;
-#ifdef USE_LED
-      led_ctrl.setMidiChannel(current_midi_channel - 1);
+    WaveSelecter() { clearWaveIndices(); setDefaultDrum(); setDefaultChannel(); }
+#ifdef USE_LCD
+    void showWaveform(char delimiter = ':') {
+      lcd.printWaveform(current_midi_channel, getChannel()->wavetable, delimiter);
+    }
+    void showEnvelope() { lcd.printEnvelope(&(getChannel()->env_param)); }
 #endif
-      memset(selected_waveforms, 0, sizeof(selected_waveforms));
-    }
-    void setup() {
-      changeWaveform(10, NumberOf(wavetables)-1); // set MIDI Ch.10 to random wave noise
-      EnvelopeParam *ep = getEnvParam(10);
-      ep->attack_time = 0;
-      ep->decay_time = 5;
-      ep->sustain_level = 0;
-      ep->release_time = 5;
-    }
     byte getCurrentMidiChannel() { return current_midi_channel; }
     void changeCurrentMidiChannel(char offset) {
       char ch0 = current_midi_channel + offset - 1;
@@ -113,42 +89,64 @@ class WaveSelecter {
       showEnvelope();
 #endif
     }
-#ifdef USE_LCD
-    void showWaveform(char delimiter = ':') {
-      lcd.printWaveform( current_midi_channel, (PROGMEM const byte *)pgm_read_word(
-        wavetables + selected_waveforms[current_midi_channel - 1]), delimiter);
-    }
-    void showEnvelope() { lcd.printEnvelope(getEnvParam()); }
-#endif
-    void changeWaveform(byte midi_channel, char offset) {
-      char *selected_waveform = selected_waveforms + (midi_channel - 1);
-      *selected_waveform += offset;
-      if (*selected_waveform < 0)
-        *selected_waveform += NumberOf(wavetables);
-      else if (*selected_waveform >= NumberOf(wavetables))
-        *selected_waveform -= NumberOf(wavetables);
-      PWMDACSynth::getChannel(midi_channel)->wavetable
-        = (PROGMEM const byte *)pgm_read_word(wavetables + *selected_waveform);
-      if(midi_channel == current_midi_channel) showWaveform('>');
-    }
     void changeWaveform(char offset) {
-      changeWaveform(current_midi_channel, offset);
+      char *swi = selected_wave_indices + (current_midi_channel - 1);
+      if( offset ) {
+        if ( (*swi += offset) < 0) {
+          *swi += N_WAVETABLES;
+        }
+        else if (*swi >= N_WAVETABLES) {
+          *swi -= N_WAVETABLES;
+        }
+      }
+      getChannel()->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + *swi);
+#ifdef USE_LCD
+      showWaveform('>');
+#endif
     }
     void changeAttack(char offset) {
-      changeEnvTime( &(getEnvParam()->attack_time), offset );
+      changeEnvTime( &(getChannel()->env_param.attack_time), offset );
     }
     void changeDecay(char offset) {
-      changeEnvTime( &(getEnvParam()->decay_time), offset );
+      changeEnvTime( &(getChannel()->env_param.decay_time), offset );
     }
     void changeSustain(char offset) {
-      byte *slp = &(getEnvParam()->sustain_level);
-      if( offset > 0 ) *slp +=0x10; else *slp -=0x10;
+      getChannel()->env_param.sustain_level += offset * 0x10;
 #ifdef USE_LCD
       showEnvelope();
 #endif
     }
     void changeRelease(char offset) {
-      changeEnvTime( &(getEnvParam()->release_time), offset );
+      changeEnvTime( &(getChannel()->env_param.release_time), offset );
+    }
+  protected:
+    static const byte N_WAVETABLES = NumberOf(wavetables);
+    char selected_wave_indices[16];
+    byte current_midi_channel; // 1==CH1, ...
+    MidiChannel *getChannel() {
+      return PWMDACSynth::getChannel(current_midi_channel);
+    }
+    void clearWaveIndices() {
+      memset(selected_wave_indices, 0, sizeof(selected_wave_indices));
+    }
+    void setDefaultDrum() {
+      char *swi = selected_wave_indices + ((current_midi_channel = 10) - 1);
+      *swi += N_WAVETABLES - 1;
+      MidiChannel *mcp = getChannel();
+      mcp->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + *swi);
+      mcp->env_param = DRUM_ENV_PARAM;
+    }
+    void setDefaultChannel() {
+      current_midi_channel = 1;
+#ifdef USE_LED
+      led_ctrl.setMidiChannel(0);
+#endif
+    }
+    void changeEnvTime(byte *p, char offset) {
+      *p += offset; *p &= 0xF;
+#ifdef USE_LCD
+      showEnvelope();
+#endif
     }
 };
 
@@ -706,7 +704,6 @@ void setup() {
   lcd.setup();
   lcd.printKeySignature(&key_signature);
 #endif
-  wave_selecter.setup();
   decoder.setup();
   button_input.setup();
 #ifdef USE_MIDI
