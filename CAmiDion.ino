@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20150929
+//  ver.20151001
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -168,62 +168,64 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
 #endif
 }
 
-// MIDI OUT 
+// MIDI OUT
 class MidiSender {
-  public:
-    void noteOff(char channel, char note, char velocity) {
-      HandleNoteOff(channel, note, velocity);
+  protected:
+    static const byte NULL_BUTTON = 0xFF;
+    byte button_index;
+    byte midi_channel;
+    void setFree() { button_index = NULL_BUTTON; }
+    boolean isFree() { return isForButton(NULL_BUTTON); }
+    void noteOff(char note, char velocity) {
+      HandleNoteOff(midi_channel, note, velocity);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOff(note, velocity, channel);
+      MIDI.sendNoteOff(note, velocity, midi_channel);
 #endif
     }
-    void noteOn(char channel, char note, char velocity) {
-      HandleNoteOn(channel, note, velocity);
+    void noteOn(char note, char velocity) {
+      HandleNoteOn(midi_channel, note, velocity);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOn(note, velocity, channel);
+      MIDI.sendNoteOn(note, velocity, midi_channel);
 #endif
+    }
+  public:
+    boolean isForButton(byte button_index) {
+      return this->button_index == button_index;
     }
 };
 
 class NoteButtonEntry : public MidiSender {
   protected:
-    byte button_index;
-    size_t n_notes;
-    char *notes;
-    byte midi_channel;
-    void noteOnChannel(byte midi_channel) {
+    size_t n_notes; char *notes;
+    boolean mallocNotes(size_t n) {
+      return isFree() && (notes = (char *)malloc(sizeof(char) * n)) != NULL;
+    }
+    void freeNotes() { free(notes); n_notes = 0; }
+    size_t noteOn(byte button_index, byte midi_channel) {
+      this->button_index = button_index;
       this->midi_channel = midi_channel;
       char *p = notes;
-      for( size_t n = n_notes; n>0; n-- ) {
-        MidiSender::noteOn(midi_channel, *p++, NOTE_VELOCITY);
-      }
+      for( size_t n = n_notes; n>0; n-- ) MidiSender::noteOn(*p++, NOTE_VELOCITY);
+      return n_notes;
     }
-    char *mallocNotes(size_t n) { return (char *)malloc(sizeof(char) * n); }
   public:
     NoteButtonEntry() { n_notes = 0; }
     boolean isFree() { return n_notes == 0; }
-    byte getButtonIndex() { return button_index; }
     size_t noteOn(byte button_index, byte midi_channel, char note) {
-      if ( ! isFree() || (notes = mallocNotes(1)) == NULL ) return 0;
-      this->button_index = button_index;
+      if ( ! mallocNotes(1) ) return 0;
       n_notes = 1; *notes = note;
-      noteOnChannel(midi_channel);
-      return n_notes;
+      return noteOn(button_index, midi_channel);
     }
     size_t noteOn(byte button_index, byte midi_channel, MusicalChord *chord) {
-      if ( ! isFree() || (notes = mallocNotes(chord->MAX_NOTES)) == NULL ) return 0;
-      this->button_index = button_index;
+      if ( ! mallocNotes(chord->MAX_NOTES) ) return 0;
       n_notes = chord->MAX_NOTES; chord->toNotes(notes);
-      noteOnChannel(midi_channel);
-      return n_notes;
+      return noteOn(button_index, midi_channel);
     }
     void noteOff() {
       if( isFree() ) return;
       char *p = notes;
-      for( size_t n = n_notes; n>0; n-- ) {
-        MidiSender::noteOff(midi_channel, *p++, NOTE_VELOCITY);
-      }
-      free(notes); n_notes = 0;
+      for( size_t n = n_notes; n>0; n-- ) MidiSender::noteOff(*p++, NOTE_VELOCITY);
+      freeNotes();
     }
 };
 
@@ -232,18 +234,15 @@ WaveSelecter wave_selecter;
 
 class Arpeggiator : public MidiSender {
   protected:
-    static const byte NULL_BUTTON = 0xFF;
-    byte button_index;
     static const byte MODE_NOTE_ON = (1<<0);
-    static const byte MODE_ON = (1<<1);
+    static const byte MODE_ENABLE = (1<<1);
     static const byte MODE_HOLD = (1<<2);
     char mode;
     MusicalChord chord;
-    char midi_channel;
     char note;
   public:
     Arpeggiator() {
-      button_index = NULL_BUTTON;
+      setFree();
       mode = MODE_HOLD;
 #ifdef USE_LED
       led_key.setOn(NoteLedStatus::LEFT);
@@ -252,39 +251,35 @@ class Arpeggiator : public MidiSender {
     boolean isNoteOn() { return mode & MODE_NOTE_ON; }
     void noteOff() {
       if( ! isNoteOn() ) return;
-      MidiSender::noteOff(midi_channel, note, ARPEGGIO_VELOCITY);
+      MidiSender::noteOff(note, ARPEGGIO_VELOCITY);
       mode &= ~MODE_NOTE_ON;
     }
     void noteOn() {
       if( isFree() ) return;
-      MidiSender::noteOn(
-        midi_channel, note = chord.getRandomNote(), ARPEGGIO_VELOCITY
-      );
+      MidiSender::noteOn(note = chord.getRandomNote(), ARPEGGIO_VELOCITY);
       mode |= MODE_NOTE_ON;
     }
 #ifdef USE_LED
-    void beatOff() { if (isOn()) led_main.setOff(NoteLedStatus::LEFT); }
-    void beatOn()  { if (isOn()) led_main.setOn(NoteLedStatus::LEFT); }
+    void beatOff() { if (isEnabled()) led_main.setOff(NoteLedStatus::LEFT); }
+    void beatOn()  { if (isEnabled()) led_main.setOn(NoteLedStatus::LEFT); }
 #endif
-    boolean isFree() { return button_index == NULL_BUTTON; }
     void pressed(byte button_index, char midi_channel, MusicalChord *chord) {
-      if( ! isOn() ) return;
+      if( ! isEnabled() ) return;
       this->button_index = button_index;
       this->midi_channel = midi_channel;
       this->chord = *chord;
     }
     void released(byte button_index) {
-      if( this->button_index != button_index ) return;
-      if( ! isHoldMode() ) this->button_index = NULL_BUTTON;
+      if( ! isHoldMode() && isForButton(button_index) ) setFree();
     }
-    void forceRelease() { if( isHoldMode() ) button_index = NULL_BUTTON; }
-    boolean isOn() { return mode & MODE_ON; }
-    void toggleOnOff() {
-      mode ^= MODE_ON;
+    void forceRelease() { if( isHoldMode() ) setFree(); }
+    boolean isEnabled() { return mode & MODE_ENABLE; }
+    void toggleEnabled() {
+      mode ^= MODE_ENABLE;
 #ifdef USE_LCD
       lcd.setCursor(0,0);
 #endif
-      if ( isOn() ) {
+      if ( isEnabled() ) {
 #ifdef USE_LED
         led_main.setOn(NoteLedStatus::LEFT);
 #endif
@@ -292,7 +287,7 @@ class Arpeggiator : public MidiSender {
         lcd.printChord();
 #endif
       } else {
-        button_index = NULL_BUTTON;
+        setFree();
 #ifdef USE_LED
         led_main.setOff(NoteLedStatus::LEFT);
 #endif
@@ -309,7 +304,7 @@ class Arpeggiator : public MidiSender {
         led_key.setOn(NoteLedStatus::LEFT);
 #endif
       else {
-        button_index = NULL_BUTTON;
+        setFree();
 #ifdef USE_LED
         led_key.setOff(NoteLedStatus::LEFT);
 #endif
@@ -319,11 +314,9 @@ class Arpeggiator : public MidiSender {
 
 class Drum {
   protected:
-    static const char VELOCITY = DRUM_VELOCITY;
-    static const byte MIDI_NOTE = DRUM_NOTE_NUMBER;
     static const byte MIDI_CH = 10;
     char note;
-    boolean is_on;
+    boolean is_enabled;
 #ifdef USE_LED
     void ledOn() {
       led_main.setOn(NoteLedStatus::CENTER);
@@ -335,12 +328,12 @@ class Drum {
     }
 #endif
   public:
-    Drum() { is_on = false; note = -1; }
+    Drum() { is_enabled = false; note = -1; }
     void noteOff() {
       if( note < 0 ) return;
-      PWMDACSynth::noteOff(MIDI_CH, note, VELOCITY);
+      PWMDACSynth::noteOff(MIDI_CH, note, DRUM_VELOCITY);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOff(MIDI_NOTE, VELOCITY, MIDI_CH);
+      MIDI.sendNoteOff(DRUM_NOTE_NUMBER, DRUM_VELOCITY, MIDI_CH);
 #endif
       note = -1;
 #ifdef USE_LED
@@ -348,19 +341,19 @@ class Drum {
 #endif
     }
     void noteOn() {
-      if( ! is_on ) return;
-      PWMDACSynth::noteOn(MIDI_CH, note = 0, VELOCITY);
+      if( ! is_enabled ) return;
+      PWMDACSynth::noteOn(MIDI_CH, note = 0, DRUM_VELOCITY);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOn(MIDI_NOTE, VELOCITY, MIDI_CH);
+      MIDI.sendNoteOn(DRUM_NOTE_NUMBER, DRUM_VELOCITY, MIDI_CH);
 #endif
 #ifdef USE_LED
       ledOn();
 #endif
     }
-    void toggleActive() {
-      is_on = ! is_on;
+    void toggleEnabled() {
+      is_enabled = ! is_enabled;
 #ifdef USE_LED
-      if( is_on ) ledOn(); else ledOff();
+      if( is_enabled ) ledOn(); else ledOff();
 #endif
     }
 };
@@ -480,7 +473,7 @@ class NoteButtons {
       NoteButtonEntry *bp = getFreeEntry();
       if( isPolyMode() ) {
         if( bp != NULL ) bp->noteOn(button_index, midi_channel, chord);
-      } else if( ! arpeggiator.isOn() ) {
+      } else if( ! arpeggiator.isEnabled() ) {
         if( bp != NULL ) bp->noteOn(
           button_index, midi_channel,
           chord->getOctaveShiftedNote(chord->isSus4() ? 12 : 0)
@@ -496,9 +489,7 @@ class NoteButtons {
       if( ! isHoldMode() ) {
         NoteButtonEntry *bp = buttons;
         for( byte i=NumberOf(buttons); i>0; i--, bp++ ) {
-          if( button_index == bp->getButtonIndex() ) {
-            bp->noteOff(); break;
-          }
+          if( bp->isForButton(button_index) ) { bp->noteOff(); break; }
         }
       }
       arpeggiator.released(button_index);
@@ -583,18 +574,18 @@ class MyButtonHandler : public ButtonHandler {
           break;
         case ButtonInput::ARPEGGIO:
           if( ! button_input.isOn(ButtonInput::KEY) ) {
-            arpeggiator.toggleOnOff();
+            arpeggiator.toggleEnabled();
           } else if( button_input.isOn(ButtonInput::ADD9) ) {
             metronome.setResolution(metronome.getResolution()==4?3:4);
           } else {
             arpeggiator.toggleHoldMode();
           }
-          break;  
+          break;
         case ButtonInput::DRUM:
           if( button_input.isOn(ButtonInput::KEY) ) {
             metronome.tap(); break;
           }
-          drum.toggleActive(); break;
+          drum.toggleEnabled(); break;
         case ButtonInput::CHORD:
           if( button_input.isOn(ButtonInput::KEY) ) {
             note_buttons.toggleHoldMode(); break;

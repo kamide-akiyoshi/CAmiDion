@@ -49,7 +49,7 @@
 #define ARPEGGIO_VELOCITY 100
 #define DRUM_VELOCITY 100
 // Drum
-#define DRUM_NOTE_NUMBER 36; // Bass Drum 1
+#define DRUM_NOTE_NUMBER 36 // Bass Drum 1
 
 ////////////////////////////////////////////////////////
 // Automatic definition

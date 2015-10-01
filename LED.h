@@ -13,7 +13,7 @@ class LedStatus {
     } leds;
   public:
     LedStatus() { this->leds.value16 = 0; }
-    enum LedByte {LOW_BYTE, HIGH_BYTE};
+    enum LedByte {LEFT_BYTE, RIGHT_BYTE};
     boolean isBitOn(LedByte b, HC138Decoder *d) {
       return leds.values8[b] & d->getOutput();
     }
@@ -31,8 +31,8 @@ class NoteLedStatus : public LedStatus {
   public:
     // 4 LEDs which controlled by buttons
     enum LedPosition {LEFT, CENTER, RIGHT, UPPER};
-    void setOn(LedPosition pos)  { sbi(leds.values8[0], pos); }
-    void setOff(LedPosition pos) { cbi(leds.values8[0], pos); }
+    void setOn(LedPosition pos)  { sbi(leds.values8[LEFT_BYTE], pos); }
+    void setOff(LedPosition pos) { cbi(leds.values8[LEFT_BYTE], pos); }
     //
     // 12 LEDs to display note
     boolean isNoteOn() { return leds.value16 & NOTE_MASK; }
@@ -76,8 +76,8 @@ class LedViewport {
     }
     void lightOn(HC138Decoder *decoder) {
       byte portc_mask = 0;
-      if( source->isBitOn(LedStatus::HIGH_BYTE, decoder) ) portc_mask |= PORTC_LED1_MASK;
-      if( source->isBitOn(LedStatus::LOW_BYTE,  decoder) ) portc_mask |= PORTC_LED0_MASK;
+      if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder) ) portc_mask |= PORTC_LED1_MASK;
+      if( source->isBitOn(LedStatus::LEFT_BYTE,  decoder) ) portc_mask |= PORTC_LED0_MASK;
       if( ! portc_mask ) return; // Both bit 0, keep light off
       DDRC  |= portc_mask; // Set OUTPUT
       PORTC |= portc_mask; //  and HIGH
