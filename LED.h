@@ -76,8 +76,8 @@ class LedViewport {
     }
     void lightOn(HC138Decoder *decoder) {
       byte portc_mask = 0;
-      if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder) ) portc_mask |= PORTC_LED1_MASK;
       if( source->isBitOn(LedStatus::LEFT_BYTE,  decoder) ) portc_mask |= PORTC_LED0_MASK;
+      if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder) ) portc_mask |= PORTC_LED1_MASK;
       if( ! portc_mask ) return; // Both bit 0, keep light off
       DDRC  |= portc_mask; // Set OUTPUT
       PORTC |= portc_mask; //  and HIGH

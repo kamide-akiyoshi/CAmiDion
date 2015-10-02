@@ -7,10 +7,22 @@
 //      02    03  04  05  06  07  30  31  32  33  34  35  36  37
 //
 ////////////////////////////////////////////////////////////////////
+enum ButtonID : byte {
+  KEY_BUTTON,
+  ADD9_BUTTON,
+  FLAT5_BUTTON,
+  MIDI_CH_BUTTON = 8,
+  M7_BUTTON,
+  SEVENTH_BUTTON,
+  ARPEGGIO_BUTTON = 16,
+  DRUM_BUTTON,
+  CHORD_BUTTON,
+  NULL_BUTTON = UCHAR_MAX
+};
 class ButtonHandler {
   public:
-    virtual void pressed(byte button_index);
-    virtual void released(byte button_index);
+    virtual void pressed(ButtonID button_id);
+    virtual void released(ButtonID button_id);
 };
 class ButtonInput {
   protected:
@@ -18,15 +30,7 @@ class ButtonInput {
     byte waiting_after_off[48];
     byte input_status[8];
   public:
-    enum ButtonID {
-      KEY,      ADD9,  FLAT5,   Ebm,    Bbm,     Fm,      Cm,      Gm,
-      MIDI_CH,  M7,    SEVENTH, Gb,     Db,      Ab,      Eb,      Bb,
-      ARPEGGIO, DRUM,  CHORD,   Gbsus4, Dbsus4,  Absus4,  Ebsus4,  Bbsus4,
-      Dm,       Am,    Em,      Bm,     Fsharpm, Csharpm, Gsharpm, Dsharpm,
-      F,        C,     G,       D,      A,       E,       B,       Fsharp,
-      Fsus4,    Csus4, Gsus4,   Dsus4,  Asus4,   Esus4,   Bsus4,   Fsharpsus4,
-    };
-    boolean isOn(ButtonID bid) { return waiting_after_off[bid]; }
+    boolean isOn(ButtonID bid) { return waiting_after_off[(byte)bid]; }
     ButtonInput() {
       memset(waiting_after_off, 0, sizeof(waiting_after_off));
       memset(input_status, 0xFF, sizeof(input_status));
@@ -46,12 +50,12 @@ class ButtonInput {
         if( (change & mask) == 0 ) continue;
         byte *waiting = waiting_after_off + index;
         if( (*input & mask) == 0 ) {
-          handler->pressed(index);
+          handler->pressed((ButtonID)index);
           *waiting = BUTTON_RELEASE_WAIT_TIMES;
           continue;
         }
         if( *waiting == 0 ) {
-          handler->released(index); continue;
+          handler->released((ButtonID)index); continue;
         }
         // Cancel bit, and countdown
         *input ^= mask; (*waiting)--;
