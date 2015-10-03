@@ -127,10 +127,10 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       clearChord();
     }
     void printEnvelope(EnvelopeParam *ep) {
-      *bufp++ = 'a'; setHex(ep->attack_time);
-      *bufp++ = 'd'; setHex(ep->decay_time);
-      *bufp++ = 's'; setHex(ep->sustain_level >> 4);
-      *bufp++ = 'r'; setHex(ep->release_time);
+      *bufp++ = 'a'; setHex(*(ep->getParam(ADSR_ATTACK)));
+      *bufp++ = 'd'; setHex(*(ep->getParam(ADSR_DECAY)));
+      *bufp++ = 's'; setHex(*(ep->getParam(ADSR_SUSTAIN)) >> 4);
+      *bufp++ = 'r'; setHex(*(ep->getParam(ADSR_RELEASE)));
       setCursor(0,1);
       printLineBuffer();
     }

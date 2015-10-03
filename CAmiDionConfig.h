@@ -38,7 +38,7 @@
 // Anti-chattering
 //   How many times of coutinuous button-off detections
 //   required to treat as "button released"
-#define BUTTON_RELEASE_WAIT_TIMES 8  // [0..255]
+#define BUTTON_RELEASE_WAIT_TIMES 20  // [0..255]
 
 // MIDI ////////////////////////////////////////////////
 #define USE_MIDI_IN        // enables MIDI IN

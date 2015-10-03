@@ -17,7 +17,8 @@ enum ButtonID : byte {
   ARPEGGIO_BUTTON = 16,
   DRUM_BUTTON,
   CHORD_BUTTON,
-  NULL_BUTTON = UCHAR_MAX
+  ANY_BUTTON = UCHAR_MAX - 1,
+  NULL_BUTTON
 };
 class ButtonHandler {
   public:
