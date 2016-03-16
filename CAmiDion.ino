@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20151003
+//  ver.20160316
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -10,7 +10,7 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-const EnvelopeParam DEFAULT_ENV_PARAM = EnvelopeParam(4, 10, 0, 8);
+const EnvelopeParam DEFAULT_ENV_PARAM = EnvelopeParam(4, 11, 0, 9);
 const EnvelopeParam DRUM_ENV_PARAM = EnvelopeParam(0, 5, 0, 5);
 #if defined(OCTAVE_ANALOG_PIN)
 PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE, DEFAULT_ENV_PARAM);
@@ -43,8 +43,6 @@ MIDI_CREATE_DEFAULT_INSTANCE();
 #endif
 
 #include "musicalnote.h"
-#include "decoder.h"
-#include "button.h"
 
 #if defined(USE_LED)
 #include "LED.h"
@@ -67,6 +65,9 @@ LedViewport led_viewport = LedViewport(&led_main);
 #include "CAmiDionLCD.h"
 CAmiDionLCD lcd;
 #endif
+
+#include "decoder.h"
+#include "button.h"
 
 class WaveSelecter {
   public:
@@ -649,7 +650,12 @@ class MyButtonHandler : public ButtonHandler {
 };
 
 MyButtonHandler handler;
-HC138Decoder decoder;
+
+HC138Decoder decoder
+#ifdef USE_LED
+ = HC138Decoder(&led_viewport)
+#endif
+;
 
 void setup() {
 #ifdef OCTAVE_ANALOG_PIN
@@ -682,17 +688,9 @@ void setup() {
 }
 
 void loop() {
-  for( decoder.reset(); decoder.getOutput(); decoder.next() ) {
-#ifdef USE_LED
-    led_viewport.lightOff();
-#endif
-    decoder.sendOut();
-#ifdef USE_LED
-    led_viewport.lightOn(&decoder);
-#endif
-    button_input.scan(&handler, &decoder);
-    PWMDACSynth::update();
-  }
+  decoder.next();
+  button_input.scan(&handler, &decoder);
+  PWMDACSynth::update();
 #ifdef USE_MIDI_IN
   MIDI.read();
 #endif

@@ -14,8 +14,8 @@ class LedStatus {
   public:
     LedStatus() { this->leds.value16 = 0; }
     enum LedByte {LEFT_BYTE, RIGHT_BYTE};
-    boolean isBitOn(LedByte b, HC138Decoder *d) {
-      return leds.values8[b] & d->getOutput();
+    boolean isBitOn(LedByte b, byte decoder_output) {
+      return leds.values8[b] & decoder_output;
     }
 };
 
@@ -71,16 +71,16 @@ class LedViewport {
     LedViewport(LedStatus *source) { setSource(source); }
     void setSource(LedStatus *source) { this->source = source; }
     void lightOff() {
-      DDRC  &= ~PORTC_LED_MASK;  // Set INPUT
-      PORTC &= ~PORTC_LED_MASK;  //   and pullup flag OFF (Hi-Z), LOW when output
+      PORTC &= ~PORTC_LED_MASK; // LOW
+      DDRC  &= ~PORTC_LED_MASK; // INPUT (Hi-Z)
     }
-    void lightOn(HC138Decoder *decoder) {
+    void lightOn(byte decoder_output) {
       byte portc_mask = 0;
-      if( source->isBitOn(LedStatus::LEFT_BYTE,  decoder) ) portc_mask |= PORTC_LED0_MASK;
-      if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder) ) portc_mask |= PORTC_LED1_MASK;
+      if( source->isBitOn(LedStatus::LEFT_BYTE,  decoder_output) ) portc_mask |= PORTC_LED0_MASK;
+      if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder_output) ) portc_mask |= PORTC_LED1_MASK;
       if( ! portc_mask ) return; // Both bit 0, keep light off
-      DDRC  |= portc_mask; // Set OUTPUT
-      PORTC |= portc_mask; //  and HIGH
+      DDRC  |= portc_mask; // OUTPUT
+      PORTC |= portc_mask; // HIGH
     }
 };
 
