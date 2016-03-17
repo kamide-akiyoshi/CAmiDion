@@ -71,16 +71,16 @@ class LedViewport {
     LedViewport(LedStatus *source) { setSource(source); }
     void setSource(LedStatus *source) { this->source = source; }
     void lightOff() {
-      PORTC &= ~PORTC_LED_MASK; // LOW
       DDRC  &= ~PORTC_LED_MASK; // INPUT (Hi-Z)
+      PORTC &= ~PORTC_LED_MASK; // LOW (pullup-R off)
     }
     void lightOn(byte decoder_output) {
       byte portc_mask = 0;
       if( source->isBitOn(LedStatus::LEFT_BYTE,  decoder_output) ) portc_mask |= PORTC_LED0_MASK;
       if( source->isBitOn(LedStatus::RIGHT_BYTE, decoder_output) ) portc_mask |= PORTC_LED1_MASK;
       if( ! portc_mask ) return; // Both bit 0, keep light off
-      DDRC  |= portc_mask; // OUTPUT
-      PORTC |= portc_mask; // HIGH
+      PORTC |= portc_mask; // HIGH (pullup-R on)
+      DDRC  |= portc_mask; // OUTPUT (Lo-Z)
     }
 };
 
