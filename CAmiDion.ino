@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160317
+//  ver.20160421
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -10,32 +10,167 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-const EnvelopeParam DEFAULT_ENV_PARAM = EnvelopeParam(4, 11, 0, 9);
-const EnvelopeParam DRUM_ENV_PARAM = EnvelopeParam(0, 5, 0, 5);
+
+extern PROGMEM const byte randomWavetable[];
+extern PROGMEM const byte shepardToneSawtoothWavetable[];
+PWMDAC_CREATE_WAVETABLE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
+PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 #if defined(OCTAVE_ANALOG_PIN)
-PWMDAC_CREATE_INSTANCE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE, DEFAULT_ENV_PARAM);
+extern PROGMEM const byte guitarWavetable[];
+PWMDAC_CREATE_WAVETABLE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
 PWMDAC_CREATE_WAVETABLE(triangleWavetable, PWMDAC_TRIANGLE_WAVE);
 PWMDAC_CREATE_WAVETABLE(sineWavetable, PWMDAC_SINE_WAVE);
-PWMDAC_CREATE_WAVETABLE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
-extern PROGMEM const byte guitarWavetable[];
-#else
-PWMDAC_CREATE_INSTANCE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
-#endif
-extern PROGMEM const byte randomWavetable[];
-extern PROGMEM const byte shepardToneSawtoothWavetable[];
-PROGMEM const byte * const wavetables[] = {
-#if defined(OCTAVE_ANALOG_PIN)
-  sawtoothWavetable,
-  squareWavetable,
-  guitarWavetable,
-  sineWavetable,
-  triangleWavetable,
-#endif
-  shepardToneSineWavetable,
-  shepardToneSawtoothWavetable,
-  randomWavetable,
+PROGMEM const Instrument instruments[] = {
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+
+  {sineWavetable, {9, 0, 11, 4}},
+  {sineWavetable, {9, 0, 11, 4}},
+  {sineWavetable, {9, 0, 9, 4}},
+  {sineWavetable, {9, 0, 11, 4}},
+  {sineWavetable, {8, 0, 8, 4}},
+  {sineWavetable, {7, 0, 7, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 9, 4}},
+
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 9}},
+
+  {guitarWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {guitarWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {randomWavetable, {9, 0, 10, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {randomWavetable, {9, 8, 10, 4}},
+
+  {guitarWavetable, {9, 0, 11, 4}},
+  {guitarWavetable, {9, 0, 11, 4}},
+  {guitarWavetable, {9, 0, 11, 4}},
+  {guitarWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 8, 10, 4}},
+  {guitarWavetable, {9, 15, 11, 9}},
+
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {8, 255, 8, 4}},
+  {sineWavetable, {9, 0, 10, 4}},
+  {randomWavetable, {9, 0, 10, 4}},
+
+  {triangleWavetable, {9, 255, 11, 6}},
+  {triangleWavetable, {9, 255, 11, 11}},
+  {triangleWavetable, {9, 255, 11, 9}},
+  {triangleWavetable, {9, 255, 11, 7}},
+  {guitarWavetable, {9, 255, 11, 9}},
+  {sawtoothWavetable, {9, 255, 11, 9}},
+  {sineWavetable, {9, 255, 11, 9}},
+  {squareWavetable, {8, 0, 9, 3}},
+
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {triangleWavetable, {9, 255, 11, 4}},
+
+  {guitarWavetable, {9, 255, 11, 9}},
+  {guitarWavetable, {9, 255, 11, 9}},
+  {sineWavetable, {9, 255, 11, 9}},
+  {triangleWavetable, {9, 255, 11, 9}},
+  {randomWavetable, {9, 255, 11, 9}},
+  {triangleWavetable, {9, 255, 11, 9}},
+  {sineWavetable, {9, 255, 11, 9}},
+  {sineWavetable, {9, 255, 11, 8}},
+
+  {squareWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {triangleWavetable, {9, 255, 11, 4}},
+  {triangleWavetable, {9, 128, 8, 4}},
+  {sawtoothWavetable, {9, 128, 8, 4}},
+  {sawtoothWavetable, {9, 128, 8, 4}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+
+  {guitarWavetable, {9, 255, 11, 6}},
+  {guitarWavetable, {9, 255, 11, 11}},
+  {guitarWavetable, {4, 128, 8, 9}},
+  {guitarWavetable, {9, 255, 11, 6}},
+  {guitarWavetable, {9, 128, 8, 4}},
+  {sawtoothWavetable, {9, 255, 11, 11}},
+  {sawtoothWavetable, {9, 255, 11, 10}},
+  {sawtoothWavetable, {9, 255, 11, 11}},
+
+  {sawtoothWavetable, {9, 128, 8, 4}},
+  {sawtoothWavetable, {9, 255, 11, 11}},
+  {sawtoothWavetable, {9, 128, 8, 4}},
+  {guitarWavetable, {9, 128, 8, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 11}},
+  {guitarWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {8, 0, 8, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {9, 0, 11, 4}},
+
+  {squareWavetable, {9, 0, 11, 4}},
+  {sawtoothWavetable, {8, 0, 8, 4}},
+  {guitarWavetable, {9, 0, 11, 4}},
+  {sineWavetable, {8, 0, 8, 4}},
+  {randomWavetable, {8, 0, 8, 4}},
+  {sineWavetable, {8, 0, 8, 4}},
+  {randomWavetable, {8, 0, 8, 4}},
+  {randomWavetable, {8, 255, 8, 14}},
+
+  {randomWavetable, {8, 0, 8, 4}},
+  {randomWavetable, {8, 0, 8, 4}},
+  {randomWavetable, {10, 8, 10, 13}},
+  {sineWavetable, {9, 255, 11, 4}},
+  {sawtoothWavetable, {9, 255, 11, 4}},
+  {randomWavetable, {9, 255, 11, 13}},
+  {randomWavetable, {10, 128, 10, 13}},
+  {randomWavetable, {9, 0, 9, 3}},
 };
+PWMDAC_CREATE_INSTANCE(instruments);
+#else
+PROGMEM const Instrument DEFAULT_INSTRUMENT = {shepardToneSineWavetable, {9, 0, 11, 4}};
+PWMDAC_CREATE_INSTANCE(&DEFAULT_INSTRUMENT);
+#endif
 
 #if defined(USE_MIDI)
 #include <MIDI.h>
@@ -69,6 +204,19 @@ CAmiDionLCD lcd;
 #include "decoder.h"
 #include "button.h"
 
+PROGMEM const byte * const wavetables[] = {
+#if defined(OCTAVE_ANALOG_PIN)
+  sawtoothWavetable,
+  squareWavetable,
+  guitarWavetable,
+  sineWavetable,
+  triangleWavetable,
+#endif
+  shepardToneSineWavetable,
+  shepardToneSawtoothWavetable,
+  randomWavetable,
+};
+
 class WaveSelecter {
   public:
     WaveSelecter() { clearWaveIndices(); setDefaultDrum(); setDefaultChannel(); }
@@ -76,7 +224,7 @@ class WaveSelecter {
     void showWaveform(char delimiter = ':') {
       lcd.printWaveform(current_midi_channel, getChannel()->wavetable, delimiter);
     }
-    void showEnvelope() { lcd.printEnvelope(&(getChannel()->env_param)); }
+    void showEnvelope() { lcd.printEnvelope(&(getChannel()->envelope)); }
 #endif
     byte getCurrentMidiChannel() { return current_midi_channel; }
     void changeCurrentMidiChannel(char offset) {
@@ -105,8 +253,14 @@ class WaveSelecter {
       showWaveform('>');
 #endif
     }
+    void waveformChanged(byte channel, PROGMEM const byte *wavetable) {
+      char *swi = selected_wave_indices + (channel - 1);
+      for( *swi = 0; *swi < N_WAVETABLES; *swi++ )
+        if( (PROGMEM const byte *)pgm_read_word(wavetables + *swi) == wavetable )
+          break;
+    }
     void changeEnvelope(AdsrStatus adsr, char offset) {
-      byte *p = getChannel()->env_param.getParam(adsr);
+      byte *p = getChannel()->envelope.getParam(adsr);
       if( adsr == ADSR_SUSTAIN ) {
         *p += offset * 0x10;
       } else {
@@ -129,9 +283,7 @@ class WaveSelecter {
     void setDefaultDrum() {
       char *swi = selected_wave_indices + ((current_midi_channel = 10) - 1);
       *swi += N_WAVETABLES - 1;
-      MidiChannel *mcp = getChannel();
-      mcp->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + *swi);
-      mcp->env_param = DRUM_ENV_PARAM;
+      getChannel()->programChange(&DRUM_INSTRUMENT);
     }
     void setDefaultChannel() {
       current_midi_channel = 1;
@@ -140,6 +292,8 @@ class WaveSelecter {
 #endif
     }
 };
+
+WaveSelecter wave_selecter;
 
 // MIDI IN receive callbacks
 void HandleNoteOff(byte channel, byte pitch, byte velocity) {
@@ -158,6 +312,15 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
   led_main.noteOn(pitch);
 #endif
 }
+#if defined(OCTAVE_ANALOG_PIN)
+void HandleProgramChange(byte channel, byte number) {
+  if( channel == 10 ) return;
+  MidiChannel *cp = PWMDACSynth::getChannel(channel);
+  PROGMEM const Instrument *ip = instruments + number;
+  cp->programChange(ip);
+  wave_selecter.waveformChanged(channel, ip->wavetable);
+}
+#endif
 
 class NoteSender {
   protected:
@@ -206,8 +369,6 @@ class PolyNoteSender : public NoteSender {
       free(notes); n_notes = 0; return true;
     }
 };
-
-WaveSelecter wave_selecter;
 
 class Arpeggiator : public NoteSender {
   protected:
@@ -677,6 +838,10 @@ void setup() {
   MIDI.setHandleNoteOn(HandleNoteOn);
   MIDI.setHandlePitchBend(PWMDACSynth::pitchBend);
   MIDI.setHandleControlChange(PWMDACSynth::controlChange);
+  MIDI.setHandleSystemReset(PWMDACSynth::systemReset);
+#if defined(OCTAVE_ANALOG_PIN)
+  MIDI.setHandleProgramChange(HandleProgramChange);
+#endif
 #endif
   MIDI.begin(MIDI_CHANNEL_OMNI); // receives all MIDI channels
   MIDI.turnThruOff(); // Disable MIDI IN -> MIDI OUT mirroring
