@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160421
+//  ver.20160422
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -10,162 +10,16 @@
 #include "CAmiDionConfig.h"
 
 #include <PWMDAC_Synth.h>
-
 extern PROGMEM const byte randomWavetable[];
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
 PWMDAC_CREATE_WAVETABLE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
-PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 #if defined(OCTAVE_ANALOG_PIN)
 extern PROGMEM const byte guitarWavetable[];
 PWMDAC_CREATE_WAVETABLE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
 PWMDAC_CREATE_WAVETABLE(triangleWavetable, PWMDAC_TRIANGLE_WAVE);
 PWMDAC_CREATE_WAVETABLE(sineWavetable, PWMDAC_SINE_WAVE);
-PROGMEM const Instrument instruments[] = {
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-
-  {sineWavetable, {9, 0, 11, 4}},
-  {sineWavetable, {9, 0, 11, 4}},
-  {sineWavetable, {9, 0, 9, 4}},
-  {sineWavetable, {9, 0, 11, 4}},
-  {sineWavetable, {8, 0, 8, 4}},
-  {sineWavetable, {7, 0, 7, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 9, 4}},
-
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 9}},
-
-  {guitarWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {guitarWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {randomWavetable, {9, 0, 10, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {randomWavetable, {9, 8, 10, 4}},
-
-  {guitarWavetable, {9, 0, 11, 4}},
-  {guitarWavetable, {9, 0, 11, 4}},
-  {guitarWavetable, {9, 0, 11, 4}},
-  {guitarWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 8, 10, 4}},
-  {guitarWavetable, {9, 15, 11, 9}},
-
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {8, 255, 8, 4}},
-  {sineWavetable, {9, 0, 10, 4}},
-  {randomWavetable, {9, 0, 10, 4}},
-
-  {triangleWavetable, {9, 255, 11, 6}},
-  {triangleWavetable, {9, 255, 11, 11}},
-  {triangleWavetable, {9, 255, 11, 9}},
-  {triangleWavetable, {9, 255, 11, 7}},
-  {guitarWavetable, {9, 255, 11, 9}},
-  {sawtoothWavetable, {9, 255, 11, 9}},
-  {sineWavetable, {9, 255, 11, 9}},
-  {squareWavetable, {8, 0, 9, 3}},
-
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {triangleWavetable, {9, 255, 11, 4}},
-
-  {guitarWavetable, {9, 255, 11, 9}},
-  {guitarWavetable, {9, 255, 11, 9}},
-  {sineWavetable, {9, 255, 11, 9}},
-  {triangleWavetable, {9, 255, 11, 9}},
-  {randomWavetable, {9, 255, 11, 9}},
-  {triangleWavetable, {9, 255, 11, 9}},
-  {sineWavetable, {9, 255, 11, 9}},
-  {sineWavetable, {9, 255, 11, 8}},
-
-  {squareWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {triangleWavetable, {9, 255, 11, 4}},
-  {triangleWavetable, {9, 128, 8, 4}},
-  {sawtoothWavetable, {9, 128, 8, 4}},
-  {sawtoothWavetable, {9, 128, 8, 4}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-
-  {guitarWavetable, {9, 255, 11, 6}},
-  {guitarWavetable, {9, 255, 11, 11}},
-  {guitarWavetable, {4, 128, 8, 9}},
-  {guitarWavetable, {9, 255, 11, 6}},
-  {guitarWavetable, {9, 128, 8, 4}},
-  {sawtoothWavetable, {9, 255, 11, 11}},
-  {sawtoothWavetable, {9, 255, 11, 10}},
-  {sawtoothWavetable, {9, 255, 11, 11}},
-
-  {sawtoothWavetable, {9, 128, 8, 4}},
-  {sawtoothWavetable, {9, 255, 11, 11}},
-  {sawtoothWavetable, {9, 128, 8, 4}},
-  {guitarWavetable, {9, 128, 8, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 11}},
-  {guitarWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {8, 0, 8, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {9, 0, 11, 4}},
-
-  {squareWavetable, {9, 0, 11, 4}},
-  {sawtoothWavetable, {8, 0, 8, 4}},
-  {guitarWavetable, {9, 0, 11, 4}},
-  {sineWavetable, {8, 0, 8, 4}},
-  {randomWavetable, {8, 0, 8, 4}},
-  {sineWavetable, {8, 0, 8, 4}},
-  {randomWavetable, {8, 0, 8, 4}},
-  {randomWavetable, {8, 255, 8, 14}},
-
-  {randomWavetable, {8, 0, 8, 4}},
-  {randomWavetable, {8, 0, 8, 4}},
-  {randomWavetable, {10, 8, 10, 13}},
-  {sineWavetable, {9, 255, 11, 4}},
-  {sawtoothWavetable, {9, 255, 11, 4}},
-  {randomWavetable, {9, 255, 11, 13}},
-  {randomWavetable, {10, 128, 10, 13}},
-  {randomWavetable, {9, 0, 9, 3}},
-};
+extern PROGMEM const Instrument instruments[];
 PWMDAC_CREATE_INSTANCE(instruments);
 #else
 PROGMEM const Instrument DEFAULT_INSTRUMENT = {shepardToneSineWavetable, {9, 0, 11, 4}};
@@ -216,15 +70,29 @@ PROGMEM const byte * const wavetables[] = {
   shepardToneSawtoothWavetable,
   randomWavetable,
 };
-
+PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 class WaveSelecter {
+  protected:
+    byte current_midi_channel; // 1==CH1, ...
   public:
-    WaveSelecter() { clearWaveIndices(); setDefaultDrum(); setDefaultChannel(); }
+    WaveSelecter() {
+      PWMDACSynth::getChannel(DRUM_MIDI_CHANNEL)->programChange(&DRUM_INSTRUMENT);
+      current_midi_channel = 1;
+#ifdef USE_LED
+      led_ctrl.setMidiChannel(0);
+#endif
+    }
 #ifdef USE_LCD
     void showWaveform(char delimiter = ':') {
-      lcd.printWaveform(current_midi_channel, getChannel()->wavetable, delimiter);
+      lcd.printWaveform(
+        current_midi_channel,
+        PWMDACSynth::getChannel(current_midi_channel)->wavetable,
+        delimiter
+      );
     }
-    void showEnvelope() { lcd.printEnvelope(&(getChannel()->envelope)); }
+    void showEnvelope() {
+      lcd.printEnvelope(&(PWMDACSynth::getChannel(current_midi_channel)->envelope));
+    }
 #endif
     byte getCurrentMidiChannel() { return current_midi_channel; }
     void changeCurrentMidiChannel(char offset) {
@@ -239,56 +107,26 @@ class WaveSelecter {
 #endif
     }
     void changeWaveform(char offset) {
-      char *swi = selected_wave_indices + (current_midi_channel - 1);
-      if( offset ) {
-        if ( (*swi += offset) < 0) {
-          *swi += N_WAVETABLES;
-        }
-        else if (*swi >= N_WAVETABLES) {
-          *swi -= N_WAVETABLES;
-        }
-      }
-      getChannel()->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + *swi);
+      if( ! offset ) return;
+      MidiChannel *cp = PWMDACSynth::getChannel(current_midi_channel);
+      for( byte i = 0; i < NumberOf(wavetables); i++ ) {
+        if( (PROGMEM const byte *)pgm_read_word(wavetables + i) != cp->wavetable )
+          continue;
+        if ( (i += offset) < 0) i += NumberOf(wavetables);
+        else if (i >= NumberOf(wavetables)) i -= NumberOf(wavetables);
+        cp->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + i);
 #ifdef USE_LCD
-      showWaveform('>');
+        showWaveform('>');
 #endif
-    }
-    void waveformChanged(byte channel, PROGMEM const byte *wavetable) {
-      char *swi = selected_wave_indices + (channel - 1);
-      for( *swi = 0; *swi < N_WAVETABLES; *swi++ )
-        if( (PROGMEM const byte *)pgm_read_word(wavetables + *swi) == wavetable )
-          break;
+        return;
+      }
     }
     void changeEnvelope(AdsrStatus adsr, char offset) {
-      byte *p = getChannel()->envelope.getParam(adsr);
-      if( adsr == ADSR_SUSTAIN ) {
-        *p += offset * 0x10;
-      } else {
-        *p += offset; *p &= 0xF;
-      }
+      byte *p = PWMDACSynth::getChannel(current_midi_channel)->envelope.getParam(adsr);
+      if( adsr == ADSR_SUSTAIN ) *p += offset * 0x10; // 0..F -> 0..FF
+      else { *p += offset; *p &= 0xF; }
 #ifdef USE_LCD
       showEnvelope();
-#endif
-    }
-  protected:
-    static const byte N_WAVETABLES = NumberOf(wavetables);
-    char selected_wave_indices[16];
-    byte current_midi_channel; // 1==CH1, ...
-    MidiChannel *getChannel() {
-      return PWMDACSynth::getChannel(current_midi_channel);
-    }
-    void clearWaveIndices() {
-      memset(selected_wave_indices, 0, sizeof(selected_wave_indices));
-    }
-    void setDefaultDrum() {
-      char *swi = selected_wave_indices + ((current_midi_channel = 10) - 1);
-      *swi += N_WAVETABLES - 1;
-      getChannel()->programChange(&DRUM_INSTRUMENT);
-    }
-    void setDefaultChannel() {
-      current_midi_channel = 1;
-#ifdef USE_LED
-      led_ctrl.setMidiChannel(0);
 #endif
     }
 };
@@ -314,11 +152,8 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
 }
 #if defined(OCTAVE_ANALOG_PIN)
 void HandleProgramChange(byte channel, byte number) {
-  if( channel == 10 ) return;
-  MidiChannel *cp = PWMDACSynth::getChannel(channel);
-  PROGMEM const Instrument *ip = instruments + number;
-  cp->programChange(ip);
-  wave_selecter.waveformChanged(channel, ip->wavetable);
+  if( channel == DRUM_MIDI_CHANNEL ) return;
+  PWMDACSynth::getChannel(channel)->programChange(instruments + number);
 }
 #endif
 
@@ -453,7 +288,6 @@ class Arpeggiator : public NoteSender {
 
 class Drum {
   protected:
-    static const byte MIDI_CH = 10;
     char note;
     boolean is_enabled;
 #ifdef USE_LED
@@ -475,9 +309,9 @@ class Drum {
     }
     void noteOff() {
       if( note < 0 ) return;
-      PWMDACSynth::noteOff(MIDI_CH, note, DRUM_VELOCITY);
+      PWMDACSynth::noteOff(DRUM_MIDI_CHANNEL, note, DRUM_VELOCITY);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOff(DRUM_NOTE_NUMBER, DRUM_VELOCITY, MIDI_CH);
+      MIDI.sendNoteOff(DRUM_NOTE_NUMBER, DRUM_VELOCITY, DRUM_MIDI_CHANNEL);
 #endif
       note = -1;
 #ifdef USE_LED
@@ -486,9 +320,9 @@ class Drum {
     }
     void noteOn() {
       if( ! is_enabled ) return;
-      PWMDACSynth::noteOn(MIDI_CH, note = 0, DRUM_VELOCITY);
+      PWMDACSynth::noteOn(DRUM_MIDI_CHANNEL, note = 0, DRUM_VELOCITY);
 #ifdef USE_MIDI_OUT
-      MIDI.sendNoteOn(DRUM_NOTE_NUMBER, DRUM_VELOCITY, MIDI_CH);
+      MIDI.sendNoteOn(DRUM_NOTE_NUMBER, DRUM_VELOCITY, DRUM_MIDI_CHANNEL);
 #endif
 #ifdef USE_LED
       ledOn();
