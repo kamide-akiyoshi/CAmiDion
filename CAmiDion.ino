@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160423
+//  ver.20160423-1
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -9,7 +9,7 @@
 
 #include "CAmiDionConfig.h"
 
-#include <PWMDAC_Synth.h>
+#include "PWMDAC_Synth.h"
 extern PROGMEM const byte randomWavetable[];
 extern PROGMEM const byte shepardToneSawtoothWavetable[];
 PWMDAC_CREATE_WAVETABLE(shepardToneSineWavetable, PWMDAC_SHEPARD_TONE);
@@ -25,6 +25,7 @@ PWMDAC_CREATE_INSTANCE(instruments);
 PROGMEM const Instrument DEFAULT_INSTRUMENT = {shepardToneSineWavetable, {9, 0, 11, 4}};
 PWMDAC_CREATE_INSTANCE(&DEFAULT_INSTRUMENT);
 #endif
+PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 
 #if defined(USE_MIDI)
 #include <MIDI.h>
@@ -70,7 +71,6 @@ PROGMEM const byte * const wavetables[] = {
   shepardToneSawtoothWavetable,
   randomWavetable,
 };
-PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 class WaveSelecter {
   protected:
     byte current_midi_channel; // 1==CH1, ...
@@ -155,6 +155,15 @@ void HandleProgramChange(byte channel, byte number) {
   PWMDACSynth::getChannel(channel)->programChange(instruments + number);
 }
 #endif
+void HandleSystemReset() {
+  PWMDACSynth::systemReset();
+  PWMDACSynth::getChannel(DRUM_MIDI_CHANNEL)->programChange(&DRUM_INSTRUMENT);
+  led_main.allNotesOff();
+}
+PROGMEM const byte GM_SYSTEM_ON[] = {0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7};
+void HandleSystemExclusive(byte *array, unsigned size) {
+  if( memcmp_P(array, GM_SYSTEM_ON, size) == 0 ) HandleSystemReset();
+}
 
 class NoteSender {
   protected:
@@ -671,7 +680,8 @@ void setup() {
   MIDI.setHandleNoteOn(HandleNoteOn);
   MIDI.setHandlePitchBend(PWMDACSynth::pitchBend);
   MIDI.setHandleControlChange(PWMDACSynth::controlChange);
-  MIDI.setHandleSystemReset(PWMDACSynth::systemReset);
+  MIDI.setHandleSystemReset(HandleSystemReset);
+  MIDI.setHandleSystemExclusive(HandleSystemExclusive);
 #if defined(OCTAVE_ANALOG_PIN)
   MIDI.setHandleProgramChange(HandleProgramChange);
 #endif

@@ -50,6 +50,9 @@ class NoteCountableLedStatus : public NoteLedStatus {
     void resetCount() { memset(counts,0,NumberOf(counts)); }
   public:
     NoteCountableLedStatus() : NoteLedStatus() { resetCount(); }
+    void allNotesOff() {
+      resetCount(); NoteLedStatus::allNotesOff();
+    }
     void noteOff(byte pitch) {
       pitch = PWMDACSynth::musicalMod12(pitch);
       if (--counts[pitch] == 0) NoteLedStatus::noteOff(pitch);
