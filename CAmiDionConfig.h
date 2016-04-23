@@ -50,7 +50,7 @@
 #define DRUM_VELOCITY 100
 // Drum
 #define DRUM_NOTE_NUMBER 36   // Bass Drum 1
-#define DRUM_MIDI_CHANNEL 10;
+#define DRUM_MIDI_CHANNEL 10
 
 ////////////////////////////////////////////////////////
 // Automatic definition

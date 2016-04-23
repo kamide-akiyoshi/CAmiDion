@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160422
+//  ver.20160423
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -109,9 +109,8 @@ class WaveSelecter {
     void changeWaveform(char offset) {
       if( ! offset ) return;
       MidiChannel *cp = PWMDACSynth::getChannel(current_midi_channel);
-      for( byte i = 0; i < NumberOf(wavetables); i++ ) {
-        if( (PROGMEM const byte *)pgm_read_word(wavetables + i) != cp->wavetable )
-          continue;
+      for( char i = 0; i < NumberOf(wavetables); i++ ) {
+        if( (PROGMEM const byte *)pgm_read_word(wavetables + i) != cp->wavetable ) continue;
         if ( (i += offset) < 0) i += NumberOf(wavetables);
         else if (i >= NumberOf(wavetables)) i -= NumberOf(wavetables);
         cp->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + i);
