@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160423-1
+//  ver.20160424
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -133,6 +133,7 @@ class WaveSelecter {
 WaveSelecter wave_selecter;
 
 // MIDI IN receive callbacks
+//
 void HandleNoteOff(byte channel, byte pitch, byte velocity) {
   PWMDACSynth::noteOff(channel,pitch,velocity);
 #ifdef USE_LED
@@ -149,20 +150,48 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
   led_main.noteOn(pitch);
 #endif
 }
+
 #if defined(OCTAVE_ANALOG_PIN)
 void HandleProgramChange(byte channel, byte number) {
   if( channel == DRUM_MIDI_CHANNEL ) return;
   PWMDACSynth::getChannel(channel)->programChange(instruments + number);
 }
 #endif
+
 void HandleSystemReset() {
   PWMDACSynth::systemReset();
+  // In PWMDAC Synth lib, All MIDI channel will be reset to same waveform/envelope even ch#10.
+  // So ensure to set drum instrument to ch#10.
   PWMDACSynth::getChannel(DRUM_MIDI_CHANNEL)->programChange(&DRUM_INSTRUMENT);
   led_main.allNotesOff();
 }
-PROGMEM const byte GM_SYSTEM_ON[] = {0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7};
+
+// System Exclusive to reset, without first byte(0xF0)/last byte(0xF7)
+PROGMEM const byte GM_SYSTEM_ON[] = {
+  0x7E, // Universal
+  0x7F, 0x09, 0x01
+};
+PROGMEM const byte GS_SYSTEM_ON[] = {
+  0x41, // Roland
+  0x00, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41
+};
+PROGMEM const byte XG_SYSTEM_ON[] = {
+  0x43, // YAMAHA
+  0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00
+}; 
 void HandleSystemExclusive(byte *array, unsigned size) {
-  if( memcmp_P(array, GM_SYSTEM_ON, size) == 0 ) HandleSystemReset();
+  array++; size -= 2;
+  if( memcmp_P(array, GM_SYSTEM_ON, size) == 0 ) {
+    HandleSystemReset(); return;
+  }
+  array[1] &= 0xF0; // Clear lower 4-bits of device ID (0x1n -> 0x10)
+  if( memcmp_P(array, XG_SYSTEM_ON, size) == 0 ) {
+    HandleSystemReset(); return;
+  }
+  array[1] = 0; // Clear device ID (0xnn -> 0x00)
+  if( memcmp_P(array, GS_SYSTEM_ON, size) == 0 ) {
+    HandleSystemReset(); return;
+  }
 }
 
 class NoteSender {
