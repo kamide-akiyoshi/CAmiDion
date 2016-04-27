@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160424
+//  ver.20160427
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -270,8 +270,8 @@ class Arpeggiator : public NoteSender {
       sendNoteOn(current_note = chord.getRandomNote(), ARPEGGIO_VELOCITY);
     }
 #ifdef USE_LED
-    void beatOff() { if (isEnabled()) led_main.setOff(NoteLedStatus::LEFT); }
-    void beatOn()  { if (isEnabled()) led_main.setOn(NoteLedStatus::LEFT); }
+    void beatLedOff() { if (isEnabled()) led_main.setOff(NoteLedStatus::LEFT); }
+    void beatLedOn()  { if (isEnabled()) led_main.setOn(NoteLedStatus::LEFT); }
 #endif
     void pressed(ButtonID button_id, char midi_channel, MusicalChord *chord) {
       if( ! isEnabled() ) return;
@@ -456,87 +456,85 @@ Drum drum;
 #define US_PER_MINUTE  (60000000ul) // microseconds per minute
 class Metronome {
   protected:
-    static const unsigned int DEFAULT_BPM = 120;
-    unsigned long us_timeout;
-    unsigned long us_interval;
+    unsigned long us_timeout;   // Interval timeout
+    unsigned long us_interval;  // Interval time in microseconds
     unsigned long us_last_tapped;
-    unsigned int bpm;
-    byte resolution;
-    byte count;
-    void noteOff() {
-      drum.noteOff();
-#ifdef USE_LED
-      led_main.setOff(NoteLedStatus::UPPER);
-      led_key.setOff(NoteLedStatus::UPPER);
-      arpeggiator.beatOff();
-#endif
+    unsigned int bpm; // Tempo in Beats Per Minute
+    byte resolution;  // Resolution in a beat : 3 or 4
+    byte count;       // Interval count in a beat : 0 .. resolution - 1
+    void adjustInterval() { // Must be called after change of bpm or resolution
+      us_interval = (unsigned long)( US_PER_MINUTE / (bpm * resolution) );
     }
-    void noteOn() {
-      drum.noteOn();
-#ifdef USE_LED
-      led_main.setOn(NoteLedStatus::UPPER);
-      led_key.setOn(NoteLedStatus::UPPER);
-      arpeggiator.beatOn();
-#endif
-    }
-    void adjustInterval() {
-      us_interval = (unsigned long)(US_PER_MINUTE / resolution / bpm);
-    }
-    void adjustBpm() {
-      bpm = (unsigned int)(US_PER_MINUTE / resolution / us_interval);
-    }
-    void sync( unsigned long us = micros() ) { us_timeout = us; count = 0; }
   public:
     Metronome() {
       us_last_tapped = ULONG_MAX;
-      resolution = 4;
-      setBpm(DEFAULT_BPM);
-      sync();
+      resolution = 4; bpm = 120; adjustInterval();
+      us_timeout = micros(); count = 0;
     }
-    unsigned long getIntervalMicros() { return us_interval; }
-    void setIntervalMicros(unsigned long us_interval) {
-      this->us_interval = us_interval;
-      adjustBpm();
+    void toggleResolution() {
+      resolution = (resolution == 4 ? 3 : 4); adjustInterval();
     }
-    byte getResolution() { return resolution; }
-    void setResolution(byte resolution) {
-      this->resolution = resolution;
-      adjustInterval();
+#ifdef USE_LCD
+    void printTempo(char delim) { lcd.printTempo(bpm, delim); }
+#endif
+    void shiftTempo(char offset) {
+      us_timeout = micros(); count = 0;
+      if(offset) { bpm += offset; adjustInterval(); }
+#ifdef USE_LCD
+      printTempo('>');
+#endif
     }
-    unsigned int getBpm() { return bpm; }
-    void setBpm(unsigned int bpm) { this->bpm = bpm; adjustInterval(); }
-    void update() { if( micros() >= us_timeout ) timeout(); }
-    void timeout() {
+    void tap() {
+      unsigned long us = micros();
+      if( us_last_tapped < ULONG_MAX ) {
+        unsigned long us_diff = us - us_last_tapped;
+        if( us_diff < US_PER_MINUTE / 40 ) {
+          us_interval = us_diff / resolution;
+          bpm = US_PER_MINUTE / us_diff;
+        }
+      }
+      us_timeout = us_last_tapped = us; count = 0;
+#ifdef USE_LCD
+      printTempo(':');
+#endif
+    }
+    void update() {
+      if( micros() < us_timeout ) return;
+      // Timeout
       arpeggiator.noteOff();
       arpeggiator.noteOn();
       switch(count) {
-        case 0: noteOn();  break;
-        case 1: noteOff(); break;
+        case 0:
+          drum.noteOn();
+#ifdef USE_LED
+          led_main.setOn(NoteLedStatus::UPPER);
+          led_key.setOn(NoteLedStatus::UPPER);
+          arpeggiator.beatLedOn();
+#endif
+          break;
+        case 1:
+          drum.noteOff();
+#ifdef USE_LED
+          led_main.setOff(NoteLedStatus::UPPER);
+          led_key.setOff(NoteLedStatus::UPPER);
+          arpeggiator.beatLedOff();
+#endif
+          break;
       }
       if(count < resolution - 1) count++; else count = 0;
-      us_timeout += us_interval;
-    }
-    void shiftTempo(char offset) {
-      if(offset) setBpm(bpm + offset);
-      sync();
-#ifdef USE_LCD
-      lcd.printTempo(bpm, '>');
-#endif
-    }
-    void tap( unsigned long us = micros() ) {
-      if( us_last_tapped < ULONG_MAX ) {
-        unsigned long us_diff = us - us_last_tapped;
-        if( us_diff < US_PER_MINUTE / 40 ) setIntervalMicros(us_diff / resolution);
-      }
-      sync(us_last_tapped = us);
-#ifdef USE_LCD
-      lcd.printTempo(bpm);
-#endif
+      us_timeout += us_interval; // Set next timeout
     }
 };
 
-KeySignature key_signature;
 Metronome metronome;
+byte midi_clock = 23;
+void HandleClock() {
+  if( ++midi_clock < 24 ) return;
+  metronome.tap();
+  midi_clock = 0;
+}
+
+KeySignature key_signature;
 NoteSenders note_senders;
 ButtonInput button_input;
 
@@ -550,9 +548,7 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_key);
 #endif
 #ifdef USE_LCD
-          lcd.printTempo(
-            metronome.getBpm(),
-            button_input.isOn(ADD9_BUTTON)?'>':':' );
+          metronome.printTempo( button_input.isOn(ADD9_BUTTON)?'>':':' );
           lcd.printKeySignature(
             &key_signature,
             button_input.isOn(ADD9_BUTTON)?':':'>' );
@@ -561,7 +557,7 @@ class MyButtonHandler : public ButtonHandler {
         case ADD9_BUTTON:
 #ifdef USE_LCD
           if( ! button_input.isOn(KEY_BUTTON) ) break;
-          lcd.printTempo( metronome.getBpm(), '>' );
+          metronome.printTempo('>');
           lcd.printKeySignature(&key_signature);
 #endif
           break;
@@ -577,7 +573,7 @@ class MyButtonHandler : public ButtonHandler {
           if( ! button_input.isOn(KEY_BUTTON) ) {
             arpeggiator.toggleEnabled();
           } else if( button_input.isOn(ADD9_BUTTON) ) {
-            metronome.setResolution(metronome.getResolution()==4?3:4);
+            metronome.toggleResolution();
           } else {
             arpeggiator.toggleHoldMode();
           }
@@ -602,15 +598,13 @@ class MyButtonHandler : public ButtonHandler {
 #endif
 #ifdef USE_LCD
           lcd.printKeySignature(&key_signature);
-          if( button_input.isOn(ADD9_BUTTON) ) {
-            lcd.printTempo(metronome.getBpm());
-          }
+          if( button_input.isOn(ADD9_BUTTON) ) metronome.printTempo(':');
 #endif
           break;
         case ADD9_BUTTON:
 #ifdef USE_LCD
           if( ! button_input.isOn(KEY_BUTTON) ) break;
-          lcd.printTempo(metronome.getBpm());
+          metronome.printTempo(':');
           lcd.printKeySignature( &key_signature, '>' );
 #endif
           break;
@@ -709,6 +703,7 @@ void setup() {
   MIDI.setHandleNoteOn(HandleNoteOn);
   MIDI.setHandlePitchBend(PWMDACSynth::pitchBend);
   MIDI.setHandleControlChange(PWMDACSynth::controlChange);
+  MIDI.setHandleClock(HandleClock);
   MIDI.setHandleSystemReset(HandleSystemReset);
   MIDI.setHandleSystemExclusive(HandleSystemExclusive);
 #if defined(OCTAVE_ANALOG_PIN)

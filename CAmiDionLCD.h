@@ -115,7 +115,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       setCursor(0,0);
       printLineBuffer();
     }
-    void printTempo(unsigned int bpm, char delimiter = ':') {
+    void printTempo(unsigned int bpm, char delimiter) {
 #if LCD_COLS >= 15
       setString("Tempo",5);
 #else
