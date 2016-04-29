@@ -1,7 +1,7 @@
 
+PROGMEM const Instrument INSTRUMENTS[] = {
 #if defined(OCTAVE_ANALOG_PIN)
 // General MIDI instruments
-PROGMEM const Instrument instruments[] = {
   // Piano
   {sawtoothWavetable, {9, 0, 11, 4}},
   {sawtoothWavetable, {9, 0, 11, 4}},
@@ -161,6 +161,8 @@ PROGMEM const Instrument instruments[] = {
   {randomWavetable, {9, 255, 11, 12}},
   {randomWavetable, {10, 255, 10, 11}},
   {randomWavetable, {9, 0, 10, 3}},
-};
+#else
+  {shepardToneSineWavetable, {9, 0, 11, 4}}
 #endif
+};
 

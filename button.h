@@ -56,7 +56,8 @@ class ButtonInput {
           continue;
         }
         if( *waiting == 0 ) {
-          handler->released((ButtonID)index); continue;
+          handler->released((ButtonID)index);
+          continue;
         }
         // Cancel bit, and countdown
         *input ^= mask; (*waiting)--;

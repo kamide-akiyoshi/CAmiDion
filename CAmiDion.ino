@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160427
+//  ver.20160429
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://kamide.b.osdn.me/camidion/
 //  http://osdn.jp/users/kamide/pf/CAmiDion/
@@ -19,13 +19,9 @@ PWMDAC_CREATE_WAVETABLE(sawtoothWavetable, PWMDAC_SAWTOOTH_WAVE);
 PWMDAC_CREATE_WAVETABLE(squareWavetable, PWMDAC_SQUARE_WAVE);
 PWMDAC_CREATE_WAVETABLE(triangleWavetable, PWMDAC_TRIANGLE_WAVE);
 PWMDAC_CREATE_WAVETABLE(sineWavetable, PWMDAC_SINE_WAVE);
-extern PROGMEM const Instrument instruments[];
-PWMDAC_CREATE_INSTANCE(instruments);
-#else
-PROGMEM const Instrument DEFAULT_INSTRUMENT = {shepardToneSineWavetable, {9, 0, 11, 4}};
-PWMDAC_CREATE_INSTANCE(&DEFAULT_INSTRUMENT);
 #endif
-PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
+extern PROGMEM const Instrument INSTRUMENTS[];
+PWMDAC_CREATE_INSTANCE(INSTRUMENTS);
 
 #if defined(USE_MIDI)
 #include <MIDI.h>
@@ -59,7 +55,7 @@ CAmiDionLCD lcd;
 #include "decoder.h"
 #include "button.h"
 
-PROGMEM const byte * const wavetables[] = {
+PROGMEM const byte * const WAVETABLE_LIST[] = {
 #if defined(OCTAVE_ANALOG_PIN)
   sawtoothWavetable,
   squareWavetable,
@@ -71,6 +67,8 @@ PROGMEM const byte * const wavetables[] = {
   shepardToneSawtoothWavetable,
   randomWavetable,
 };
+PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
+
 class WaveSelecter {
   protected:
     byte current_midi_channel; // 1==CH1, ...
@@ -83,7 +81,7 @@ class WaveSelecter {
 #endif
     }
 #ifdef USE_LCD
-    void showWaveform(char delimiter = ':') {
+    void showWaveform(char delimiter) {
       lcd.printWaveform(
         current_midi_channel,
         PWMDACSynth::getChannel(current_midi_channel)->wavetable,
@@ -109,11 +107,11 @@ class WaveSelecter {
     void changeWaveform(char offset) {
       if( ! offset ) return;
       MidiChannel *cp = PWMDACSynth::getChannel(current_midi_channel);
-      for( char i = 0; i < NumberOf(wavetables); i++ ) {
-        if( (PROGMEM const byte *)pgm_read_word(wavetables + i) != cp->wavetable ) continue;
-        if ( (i += offset) < 0) i += NumberOf(wavetables);
-        else if (i >= NumberOf(wavetables)) i -= NumberOf(wavetables);
-        cp->wavetable = (PROGMEM const byte *)pgm_read_word(wavetables + i);
+      for( char i = 0; i < NumberOf(WAVETABLE_LIST); i++ ) {
+        if( (PROGMEM const byte *)pgm_read_word(WAVETABLE_LIST + i) != cp->wavetable ) continue;
+        if ( (i += offset) < 0) i += NumberOf(WAVETABLE_LIST);
+        else if (i >= NumberOf(WAVETABLE_LIST)) i -= NumberOf(WAVETABLE_LIST);
+        cp->wavetable = (PROGMEM const byte *)pgm_read_word(WAVETABLE_LIST + i);
 #ifdef USE_LCD
         showWaveform('>');
 #endif
@@ -154,7 +152,7 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
 #if defined(OCTAVE_ANALOG_PIN)
 void HandleProgramChange(byte channel, byte number) {
   if( channel == DRUM_MIDI_CHANNEL ) return;
-  PWMDACSynth::getChannel(channel)->programChange(instruments + number);
+  PWMDACSynth::getChannel(channel)->programChange(INSTRUMENTS + number);
 }
 #endif
 
@@ -304,7 +302,7 @@ class Arpeggiator : public NoteSender {
         led_main.setOff(NoteLedStatus::LEFT);
 #endif
 #ifdef USE_LCD
-        wave_selecter.showWaveform();
+        wave_selecter.showWaveform(':');
 #endif
       }
     }
@@ -431,7 +429,7 @@ class NoteSenders {
         led_main.setOff(NoteLedStatus::RIGHT);
 #endif
 #ifdef USE_LCD
-        wave_selecter.showWaveform();
+        wave_selecter.showWaveform(':');
 #endif
       }
     }
@@ -456,83 +454,76 @@ Drum drum;
 #define US_PER_MINUTE  (60000000ul) // microseconds per minute
 class Metronome {
   protected:
-    unsigned long us_timeout;   // Interval timeout
-    unsigned long us_interval;  // Interval time in microseconds
+    static const byte COUNT_PER_QUARTER = 12;
+    static const unsigned long US_TAP_INTERVAL_LIMIT = US_PER_MINUTE / 40; // 1500 ms
+    unsigned long us_timeout;
+    unsigned long us_interval;
     unsigned long us_last_tapped;
-    unsigned int bpm; // Tempo in Beats Per Minute
-    byte resolution;  // Resolution in a beat : 3 or 4
-    byte count;       // Interval count in a beat : 0 .. resolution - 1
-    void adjustInterval() { // Must be called after change of bpm or resolution
-      us_interval = (unsigned long)( US_PER_MINUTE / (bpm * resolution) );
-    }
+    unsigned long us_per_quarter;
+    byte arpeggiator_period;
+    byte clock_count;
+    byte midi_clock_count;
   public:
     Metronome() {
+      us_interval = (us_per_quarter = US_PER_MINUTE / 120) / COUNT_PER_QUARTER;
       us_last_tapped = ULONG_MAX;
-      resolution = 4; bpm = 120; adjustInterval();
-      us_timeout = micros(); count = 0;
+      arpeggiator_period = 3;
+      clock_count = 0;
+      us_timeout = micros();
     }
-    void toggleResolution() {
-      resolution = (resolution == 4 ? 3 : 4); adjustInterval();
+    void toggleResolution() { arpeggiator_period ^= 7; } // 100(4) <-> 011(3) by XOR 111(7)
+    unsigned int getBpm() {
+      return (unsigned int)((double)US_PER_MINUTE / (double)us_per_quarter + 0.5);
     }
+    void shiftBpm(char offset) {
+      unsigned int bpm = getBpm() + offset;
+      us_interval = (us_per_quarter = US_PER_MINUTE / bpm) / COUNT_PER_QUARTER;
 #ifdef USE_LCD
-    void printTempo(char delim) { lcd.printTempo(bpm, delim); }
-#endif
-    void shiftTempo(char offset) {
-      us_timeout = micros(); count = 0;
-      if(offset) { bpm += offset; adjustInterval(); }
-#ifdef USE_LCD
-      printTempo('>');
+      lcd.printTempo(bpm,'>');
 #endif
     }
-    void tap() {
-      unsigned long us = micros();
-      if( us_last_tapped < ULONG_MAX ) {
-        unsigned long us_diff = us - us_last_tapped;
-        if( us_diff < US_PER_MINUTE / 40 ) {
-          us_interval = us_diff / resolution;
-          bpm = US_PER_MINUTE / us_diff;
-        }
+    void sync() { us_timeout = micros(); clock_count = 0; }
+    void tap(byte clocks_per_quarter = 1) {
+      unsigned long us_diff = micros() - us_last_tapped;
+      if( us_diff < US_TAP_INTERVAL_LIMIT ) {
+        if( ++midi_clock_count < clocks_per_quarter ) return;
+        us_interval = (us_per_quarter = us_diff) / COUNT_PER_QUARTER;
       }
-      us_timeout = us_last_tapped = us; count = 0;
+      us_timeout = (us_last_tapped += us_diff);
+      midi_clock_count = clock_count = 0;
 #ifdef USE_LCD
-      printTempo(':');
+      lcd.printTempo(getBpm(),'>');
 #endif
     }
     void update() {
       if( micros() < us_timeout ) return;
-      // Timeout
-      arpeggiator.noteOff();
-      arpeggiator.noteOn();
-      switch(count) {
-        case 0:
+      if( clock_count % arpeggiator_period == 0 ) {
+        arpeggiator.noteOff();
+        arpeggiator.noteOn();
+        if(clock_count == 0) {
           drum.noteOn();
 #ifdef USE_LED
           led_main.setOn(NoteLedStatus::UPPER);
           led_key.setOn(NoteLedStatus::UPPER);
           arpeggiator.beatLedOn();
 #endif
-          break;
-        case 1:
+        }
+        if(clock_count == arpeggiator_period) {
           drum.noteOff();
-#ifdef USE_LED
+  #ifdef USE_LED
           led_main.setOff(NoteLedStatus::UPPER);
           led_key.setOff(NoteLedStatus::UPPER);
           arpeggiator.beatLedOff();
-#endif
-          break;
+  #endif
+        }
       }
-      if(count < resolution - 1) count++; else count = 0;
-      us_timeout += us_interval; // Set next timeout
+      if(++clock_count >= COUNT_PER_QUARTER) clock_count = 0;
+      us_timeout += us_interval;
     }
 };
 
 Metronome metronome;
-byte midi_clock = 23;
-void HandleClock() {
-  if( ++midi_clock < 24 ) return;
-  metronome.tap();
-  midi_clock = 0;
-}
+void HandleClock() { metronome.tap(24); }
 
 KeySignature key_signature;
 NoteSenders note_senders;
@@ -548,7 +539,7 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_key);
 #endif
 #ifdef USE_LCD
-          metronome.printTempo( button_input.isOn(ADD9_BUTTON)?'>':':' );
+          lcd.printTempo(metronome.getBpm(),button_input.isOn(ADD9_BUTTON)?'>':':');
           lcd.printKeySignature(
             &key_signature,
             button_input.isOn(ADD9_BUTTON)?':':'>' );
@@ -557,7 +548,7 @@ class MyButtonHandler : public ButtonHandler {
         case ADD9_BUTTON:
 #ifdef USE_LCD
           if( ! button_input.isOn(KEY_BUTTON) ) break;
-          metronome.printTempo('>');
+          lcd.printTempo(metronome.getBpm(),'>');
           lcd.printKeySignature(&key_signature);
 #endif
           break;
@@ -598,13 +589,13 @@ class MyButtonHandler : public ButtonHandler {
 #endif
 #ifdef USE_LCD
           lcd.printKeySignature(&key_signature);
-          if( button_input.isOn(ADD9_BUTTON) ) metronome.printTempo(':');
+          if( button_input.isOn(ADD9_BUTTON) ) lcd.printTempo(metronome.getBpm(),':');
 #endif
           break;
         case ADD9_BUTTON:
 #ifdef USE_LCD
           if( ! button_input.isOn(KEY_BUTTON) ) break;
-          metronome.printTempo(':');
+          lcd.printTempo(metronome.getBpm(),':');
           lcd.printKeySignature( &key_signature, '>' );
 #endif
           break;
@@ -613,7 +604,7 @@ class MyButtonHandler : public ButtonHandler {
           led_viewport.setSource(&led_main);
 #endif
 #ifdef USE_LCD
-          wave_selecter.showWaveform();
+          wave_selecter.showWaveform(':');
           lcd.printKeySignature(&key_signature);
 #endif
           break;
@@ -628,7 +619,9 @@ class MyButtonHandler : public ButtonHandler {
       else { shiftButtonPressed(button_id); return; }
       if( button_input.isOn(KEY_BUTTON) ) {
         if( button_input.isOn(ADD9_BUTTON) ) {
-          if(x == 0) metronome.shiftTempo(y);
+          if( x == 0 ) {
+            if( y == 0 ) metronome.sync(); else metronome.shiftBpm(y);
+          }
           return;
         }
         if(x) key_signature.shift(x); else key_signature.shift( 7 * y, -5, 6 );
@@ -642,9 +635,7 @@ class MyButtonHandler : public ButtonHandler {
       }
       if( button_input.isOn(MIDI_CH_BUTTON) ) {
         if(y == 0) {
-          if( x >= -1 && x <= 1 ) {
-            wave_selecter.changeCurrentMidiChannel(x);
-          }
+          if( x >= -1 && x <= 1 ) wave_selecter.changeCurrentMidiChannel(x);
           return;
         }
         switch(x) {
@@ -720,12 +711,12 @@ void setup() {
 }
 
 void loop() {
-  decoder.next();
-  button_input.scan(&handler, &decoder);
-  PWMDACSynth::update();
 #ifdef USE_MIDI_IN
   MIDI.read();
 #endif
+  decoder.next();
+  button_input.scan(&handler, &decoder);
+  PWMDACSynth::update();
   metronome.update();
 }
 
