@@ -1,9 +1,9 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20160429
+//  ver.20190816
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
-//  http://kamide.b.osdn.me/camidion/
-//  http://osdn.jp/users/kamide/pf/CAmiDion/
+//  http://camidion.wordpress.com/camidion/
+//  http://osdn.net/users/kamide/pf/CAmiDion/
 //  http://www.yk.rim.or.jp/~kamide/music/chordhelper/hardware/
 //
 
@@ -71,7 +71,8 @@ PROGMEM const Instrument DRUM_INSTRUMENT = {randomWavetable, {5, 0, 5, 0}};
 
 class WaveSelecter {
   protected:
-    byte current_midi_channel; // 1==CH1, ...
+    byte current_midi_channel; // 1==CH1
+    byte programs[0x10]; // 0[0]==Prog1[CH1]
   public:
     WaveSelecter() {
       PWMDACSynth::getChannel(DRUM_MIDI_CHANNEL)->programChange(&DRUM_INSTRUMENT);
@@ -79,9 +80,10 @@ class WaveSelecter {
 #ifdef USE_LED
       led_ctrl.setMidiChannel(0);
 #endif
+      memset(programs, 0, sizeof(programs));
     }
 #ifdef USE_LCD
-    void showWaveform(char delimiter) {
+    void showWaveform(const char delimiter) {
       lcd.printWaveform(
         current_midi_channel,
         PWMDACSynth::getChannel(current_midi_channel)->wavetable,
@@ -93,7 +95,7 @@ class WaveSelecter {
     }
 #endif
     byte getCurrentMidiChannel() { return current_midi_channel; }
-    void changeCurrentMidiChannel(char offset) {
+    void changeCurrentMidiChannel(const char offset) {
       char ch0 = current_midi_channel + offset - 1;
       current_midi_channel = (ch0 &= 0xF) + 1;
 #ifdef USE_LED
@@ -104,7 +106,7 @@ class WaveSelecter {
       showEnvelope();
 #endif
     }
-    void changeWaveform(char offset) {
+    void changeWaveform(const char offset) {
       if( ! offset ) return;
       MidiChannel *cp = PWMDACSynth::getChannel(current_midi_channel);
       for( char i = 0; i < NumberOf(WAVETABLE_LIST); i++ ) {
@@ -118,13 +120,32 @@ class WaveSelecter {
         return;
       }
     }
-    void changeEnvelope(AdsrStatus adsr, char offset) {
+    void changeEnvelope(const AdsrStatus adsr, const char offset) {
       byte *p = PWMDACSynth::getChannel(current_midi_channel)->envelope.getParam(adsr);
       if( adsr == ADSR_SUSTAIN ) *p += offset * 0x10; // 0..F -> 0..FF
       else { *p += offset; *p &= 0xF; }
 #ifdef USE_LCD
       showEnvelope();
 #endif
+    }
+    byte getProgram(const byte channel) { return programs[channel - 1]; }
+    byte getProgram() { return getProgram(current_midi_channel); }
+    void programChange(const byte channel, const byte program) {
+      if( channel == DRUM_MIDI_CHANNEL ) return;
+      byte *pp = programs + channel - 1;
+      *pp = program & 0x7F;
+#ifdef USE_LCD
+      if( channel == current_midi_channel ) lcd.printProgram(*pp);
+#endif
+#if defined(OCTAVE_ANALOG_PIN)
+      PWMDACSynth::getChannel(channel)->programChange(INSTRUMENTS + *pp);
+#endif
+#ifdef USE_MIDI_OUT
+      MIDI.sendProgramChange(*pp, channel);
+#endif      
+    }
+    void programChange(const byte program) {
+      programChange(current_midi_channel, program);
     }
 };
 
@@ -151,8 +172,7 @@ void HandleNoteOn(byte channel, byte pitch, byte velocity) {
 
 #if defined(OCTAVE_ANALOG_PIN)
 void HandleProgramChange(byte channel, byte number) {
-  if( channel == DRUM_MIDI_CHANNEL ) return;
-  PWMDACSynth::getChannel(channel)->programChange(INSTRUMENTS + number);
+  wave_selecter.programChange(channel, number);
 }
 #endif
 
@@ -636,6 +656,9 @@ class MyButtonHandler : public ButtonHandler {
       if( button_input.isOn(MIDI_CH_BUTTON) ) {
         if(y == 0) {
           if( x >= -1 && x <= 1 ) wave_selecter.changeCurrentMidiChannel(x);
+#ifdef USE_LCD
+          else if( x == -2 ) lcd.printProgram(wave_selecter.getProgram());
+#endif
           return;
         }
         switch(x) {
@@ -644,6 +667,8 @@ class MyButtonHandler : public ButtonHandler {
           case 2: wave_selecter.changeEnvelope(ADSR_DECAY, y); break;
           case 3: wave_selecter.changeEnvelope(ADSR_SUSTAIN, y); break;
           case 4: wave_selecter.changeEnvelope(ADSR_RELEASE, y); break;
+          case -1: wave_selecter.programChange(wave_selecter.getProgram() + y); break;
+          case -2: wave_selecter.programChange(wave_selecter.getProgram() + y*8); break;
         }
         return;
       }

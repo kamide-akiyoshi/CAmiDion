@@ -52,8 +52,21 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       memcpy( bufp, str, len ); bufp += len;
     }
     void setString(char *str) { setString(str,strlen(str)); }
-    void setHex(byte value) {
+    void setSingleHex(byte value) {
       *bufp++ = value + (value < 10 ?'0':'A'-10);
+    }
+    void setDecimal(byte value) {
+      byte d100 = value / 100;
+      if( d100 ) {
+        *bufp++ = d100 + '0';
+        value -= d100 * 100;
+      }
+      byte d10 = value / 10;
+      if( d100 || d10 ) {
+        *bufp++ = d10 + '0';
+        value -= d10 * 10;
+      }
+      *bufp++ = value + '0';
     }
   public:
     CAmiDionLCD() : LCD_PARENT_CLASS( LCD_CONSTRUCTOR_ARGS ) {
@@ -115,7 +128,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       setCursor(0,0);
       printLineBuffer();
     }
-    void printTempo(unsigned int bpm, char delimiter) {
+    void printTempo(const unsigned int bpm, const char delimiter) {
 #if LCD_COLS >= 15
       setString("Tempo",5);
 #else
@@ -126,15 +139,21 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       printLineBuffer();
       clearChord();
     }
-    void printEnvelope(EnvelopeParam *ep) {
-      *bufp++ = 'a'; setHex(*(ep->getParam(ADSR_ATTACK)));
-      *bufp++ = 'd'; setHex(*(ep->getParam(ADSR_DECAY)));
-      *bufp++ = 's'; setHex(*(ep->getParam(ADSR_SUSTAIN)) >> 4);
-      *bufp++ = 'r'; setHex(*(ep->getParam(ADSR_RELEASE)));
+    void printProgram(byte program) { // program = 0..127
+      setString("Prog:");
+      setDecimal(++program);
       setCursor(0,1);
       printLineBuffer();
     }
-    void printWaveform(byte midi_channel, PROGMEM const byte wavetable[], char delimiter = ':') {
+    void printEnvelope(EnvelopeParam* const ep) {
+      *bufp++ = 'a'; setSingleHex(*(ep->getParam(ADSR_ATTACK)));
+      *bufp++ = 'd'; setSingleHex(*(ep->getParam(ADSR_DECAY)));
+      *bufp++ = 's'; setSingleHex(*(ep->getParam(ADSR_SUSTAIN)) >> 4);
+      *bufp++ = 'r'; setSingleHex(*(ep->getParam(ADSR_RELEASE)));
+      setCursor(0,1);
+      printLineBuffer();
+    }
+    void printWaveform(const byte midi_channel, PROGMEM const byte wavetable[], const char delimiter = ':') {
       PROGMEM static const uint8_t random_pattern[] = {
         B10101,
         B01010,
@@ -224,10 +243,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       static const char wavename_guitar[] PROGMEM = "Guitar";
 #endif
       setString("Ch",2);
-      if( midi_channel >= 10 ) {
-        *bufp++ = '1'; midi_channel -= 10;
-      }
-      *bufp++ = midi_channel + '0';
+      setDecimal(midi_channel);
       *bufp++ = delimiter;
       const char PROGMEM *wavename;
       if( wavetable == shepardToneSineWavetable ) {
