@@ -43,15 +43,15 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       memset( line_buf, ' ', LCD_COLS + 1 );
       bufp = line_buf;
     }
-    byte printLineBuffer() {
+    void printLineBuffer() {
       line_buf[LCD_COLS] = '\0';
       print(line_buf);
       clearLineBuffer();
     }
-    void setString(char *str, byte len) {
+    void setString(const char *str, const byte len) {
       memcpy( bufp, str, len ); bufp += len;
     }
-    void setString(char *str) { setString(str,strlen(str)); }
+    void setString(const char *str) { setString(str,strlen(str)); }
     void setSingleHex(byte value) {
       *bufp++ = value + (value < 10 ?'0':'A'-10);
     }
@@ -95,12 +95,12 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
 #endif
       clearLineBuffer();
     }
-    void createChar_P(uint8_t num, PROGMEM const uint8_t data[]) {
+    void createChar_P(uint8_t num, const uint8_t data[]) {
       uint8_t pattern_buf[8];
       memcpy_P( pattern_buf, data, sizeof(pattern_buf) );
       createChar(num, pattern_buf);
     }
-    void printKeySignature(KeySignature *ksp, char delimiter = ':') {
+    void printKeySignature(KeySignature * const ksp, char delimiter = ':') {
       setString("Key",3);
       *bufp++ = delimiter;
       bufp = ksp->print(bufp);
@@ -118,7 +118,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       printLineBuffer();
       clearChord();
     }
-    void printChord(MusicalChord *chord) {
+    void printChord(MusicalChord * const chord) {
       if( current_chord.equals(chord) ) return;
       current_chord = *chord;
 #if LCD_COLS >= 15
@@ -145,16 +145,16 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       setCursor(0,1);
       printLineBuffer();
     }
-    void printEnvelope(EnvelopeParam* const ep) {
-      *bufp++ = 'a'; setSingleHex(*(ep->getParam(ADSR_ATTACK)));
-      *bufp++ = 'd'; setSingleHex(*(ep->getParam(ADSR_DECAY)));
-      *bufp++ = 's'; setSingleHex(*(ep->getParam(ADSR_SUSTAIN)) >> 4);
-      *bufp++ = 'r'; setSingleHex(*(ep->getParam(ADSR_RELEASE)));
+    void printEnvelope(const byte * const ep) {
+      *bufp++ = 'a'; setSingleHex(ep[ADSR_ATTACK_VALUE]);
+      *bufp++ = 'd'; setSingleHex(ep[ADSR_DECAY_VALUE]);
+      *bufp++ = 's'; setSingleHex(ep[ADSR_SUSTAIN_VALUE] >> 4);
+      *bufp++ = 'r'; setSingleHex(ep[ADSR_RELEASE_VALUE]);
       setCursor(0,1);
       printLineBuffer();
     }
-    void printWaveform(const byte midi_channel, PROGMEM const byte wavetable[], const char delimiter = ':') {
-      PROGMEM static const uint8_t random_pattern[] = {
+    void printWaveform(const byte midi_channel, const byte wavetable[], const char delimiter = ':') {
+      static const uint8_t random_pattern[] PROGMEM = {
         B10101,
         B01010,
         B10101,
@@ -164,7 +164,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B10101,
         B00000,
       };
-      PROGMEM static const uint8_t sawtooth_left[] = {
+      static const uint8_t sawtooth_left[] PROGMEM = {
         B00000,
         B00000,
         B00000,
@@ -174,7 +174,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00000,
         B00000,
       };
-      PROGMEM static const uint8_t sawtooth_right[] = {
+      static const uint8_t sawtooth_right[] PROGMEM = {
         B00011,
         B01101,
         B10001,
@@ -188,7 +188,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       static const char wavename_shepard[] PROGMEM = "Shepard Tone";
       static const char wavename_triangle_shepard[] PROGMEM = "\x02\x03Shepard";
 #if defined(OCTAVE_ANALOG_PIN)
-      PROGMEM static const uint8_t backslash_pattern[] = {
+      static const uint8_t backslash_pattern[] PROGMEM = {
         B00000,
         B10000,
         B01000,
@@ -198,7 +198,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00000,
         B00000,
       };
-      PROGMEM static const uint8_t square_up[] = {
+      static const uint8_t square_up[] PROGMEM = {
         B00111,
         B00100,
         B00100,
@@ -208,7 +208,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B11100,
         B00000,
       };
-      PROGMEM static const uint8_t square_down[] = {
+      static const uint8_t square_down[] PROGMEM = {
         B11100,
         B00100,
         B00100,
@@ -218,7 +218,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00111,
         B00000,
       };
-      PROGMEM static const uint8_t sine_up[] = {
+      static const uint8_t sine_up[] PROGMEM = {
         B00110,
         B01001,
         B10000,
@@ -228,7 +228,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         B00000,
         B00000,
       };
-      PROGMEM static const uint8_t sine_down[] = {
+      static const uint8_t sine_down[] PROGMEM = {
         B00000,
         B00000,
         B00000,
@@ -245,7 +245,7 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       setString("Ch",2);
       setDecimal(midi_channel);
       *bufp++ = delimiter;
-      const char PROGMEM *wavename;
+      const char *wavename;
       if( wavetable == shepardToneSineWavetable ) {
         wavename = wavename_shepard;
       }
@@ -282,6 +282,10 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
         wavename = wavename_triangle;
       }
 #endif
+      else {
+        // Unknown wavetable, so wavename cannot be displayed
+        return;
+      }
       size_t len = strlen_P(wavename);
       if( len > LCD_COLS ) len = LCD_COLS;
       memcpy_P( bufp, wavename, len );
@@ -291,5 +295,3 @@ class CAmiDionLCD : public LCD_PARENT_CLASS {
       clearChord();
     }
 };
-
-

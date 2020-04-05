@@ -13,30 +13,30 @@ class MusicalNote {
     }
     static int shiftOctave(int note) { return shiftOctave(note, getLowerBound()); }
     static int shiftOctave(int note, int lower_bound) {
-      return PWMDACSynth::musicalConstrain12(note, lower_bound, lower_bound + 11);
+      return musicalConstrain12(note, lower_bound, lower_bound + 11);
     }
-    static int shiftOctave(int note, int lower_bound, char chromatic_offset) {
+    static int shiftOctave(const int note, const int lower_bound, const char chromatic_offset) {
       return shiftOctave( note, (
         chromatic_offset == 0 ?
         lower_bound :
-        PWMDACSynth::musicalConstrain12(lower_bound + chromatic_offset, 0, 127-11)
+        musicalConstrain12(lower_bound + chromatic_offset, 0, 127-11)
       ) );
     }
     MusicalNote() { note_value = co5_value = 0; }
-    MusicalNote(char co5) { setCo5(co5); }
-    void setCo5(char co5) {
+    MusicalNote(const char co5) { setCo5(co5); }
+    void setCo5(const char co5) {
       co5_value = co5;
-      note_value = PWMDACSynth::musicalMod12( co5 + (co5 & 1) * 6 );
+      note_value = musicalMod12( co5 + (co5 & 1) * 6 );
     }
-    char getCo5()  { return  co5_value; }
-    char getNote() { return note_value; }
-    char getOctaveShiftedNote() { return shiftOctave(note_value); }
-    char getOctaveShiftedNote(char chromatic_offset) {
+    char getCo5() const { return  co5_value; }
+    char getNote() const { return note_value; }
+    char getOctaveShiftedNote() const { return shiftOctave(note_value); }
+    char getOctaveShiftedNote(const char chromatic_offset) const {
       return shiftOctave( note_value, getLowerBound(), chromatic_offset );
     }
-    char *print(char *bufp, char offset = 0) {
-      char co5 = co5_value + offset + 1;
-      *bufp++ = "FCGDAEB"[PWMDACSynth::musicalMod7(co5)];
+    char *print(char *bufp, const char offset = 0) {
+      const char co5 = co5_value + offset + 1;
+      *bufp++ = "FCGDAEB"[musicalMod7(co5)];
       if (co5 < 0) {
         *bufp++ = 'b'; // flat or double flat
         if (co5 < -7) *bufp++ = 'b'; // double flat
@@ -45,17 +45,39 @@ class MusicalNote {
       else if (co5 >=  7) *bufp++ = '#'; // sharp
       return bufp;
     }
+    // y = musicalMod12(x) in Hex
+    //   x : ... F3, F4, F5, ... FE, FF, 0, 1, 2, ... ,B, C, D, ...
+    //   y : ...  B,  0,  1, ...  A,  B, 0, 1, 2, ... ,B, 0, 1, ...
+    static byte musicalMod12(char x) {
+      char qx = x >> 2;
+      while( qx & 0xFC ) qx = (qx >> 2) + (qx & 3);
+      x &= 3;
+      return (qx==3||qx==0) ? x : (x + (qx << 2));
+    }
+    static byte musicalMod7(char x) {
+      while( x & 0xF8 ) x = (x >> 3) + (x & 7);
+      return x==7 ? 0 : x;
+    }
+    static int musicalConstrain12(const int note, const int min_note, const int max_note) {
+      if( max_note < note ) {
+        return max_note - musicalMod12(max_note - note);
+      }
+      else if( min_note > note ) {
+        return min_note + musicalMod12(note - min_note);
+      }
+      return note;
+    }
 };
 
 class KeySignature : public MusicalNote {
   public:
-    void shift(char offset, char v_min = -7, char v_max = 7) {
+    void shift(char offset, const char v_min = -7, const char v_max = 7) {
       offset += co5_value;
       if      (offset > v_max) offset -= 12;
       else if (offset < v_min) offset += 12;
       MusicalNote::setCo5(offset);
     }
-    char *print(char *bufp) {
+    char *print(char *bufp) const {
       if (co5_value == 0) return bufp;
       char b = co5_value < 0 ? 'b':'#';
       char n = abs(co5_value);
@@ -84,27 +106,29 @@ class MusicalChord : public MusicalNote {
       offset3 = offset5 = offset7 = 0; has9 = false;
     }
     MusicalChord(
-      KeySignature key_sig,
-      char offset  = 0, char offset3 = 0,
-      char offset5 = 0, char offset7 = 0,
-      boolean has9 = false
+      const KeySignature key_sig,
+      const char offset1 = 0,
+      const char offset3 = 0,
+      const char offset5 = 0,
+      const char offset7 = 0,
+      const boolean has9 = false
     ) {
-      offset += key_sig.getCo5();
+      char offset = offset1 + key_sig.getCo5();
       if( (this->offset3 = offset3) < 0 ) offset += 3;
       MusicalNote::setCo5(offset);
       this->offset5 = offset5;
       this->offset7 = offset7;
       this->has9 = has9;
     }
-    boolean equals(MusicalChord *chord) {
+    boolean equals(const MusicalChord *chord) const {
       return ! memcmp( this, chord, sizeof(MusicalChord) );
     }
-    boolean isSus4() { return offset3 > 0; }
-    char get3rdNote() { return note_value +  4 + offset3; }
-    char get5thNote() { return note_value +  7 + offset5; }
-    char get7thNote() { return note_value + 12 + offset7; }
-    char get9thNote() { return note_value + (has9?14:12); }
-    char getNote(byte i, int lower_bound) {
+    boolean isSus4() const { return offset3 > 0; }
+    char get3rdNote() const { return note_value +  4 + offset3; }
+    char get5thNote() const { return note_value +  7 + offset5; }
+    char get7thNote() const { return note_value + 12 + offset7; }
+    char get9thNote() const { return note_value + (has9?14:12); }
+    char getNote(const byte i, const int lower_bound) const {
       switch(i) {
       case 0: return shiftOctave( note_value,   lower_bound );
       case 1: return shiftOctave( get3rdNote(), lower_bound );
@@ -117,16 +141,17 @@ class MusicalChord : public MusicalNote {
         shiftOctave( get3rdNote(), lower_bound, -12 );
       case 5: return shiftOctave( note_value, lower_bound, -12 );
       }
+      return 0;
     }
-    char getNote(byte i) { return getNote( i, getLowerBound() ); }
-    char getRandomNote() { return getNote(random(MAX_NOTES)); }
-    void toNotes(char *notes, size_t n_notes, int lower_bound) {
+    char getNote(const byte i) const { return getNote( i, getLowerBound() ); }
+    char getRandomNote() const { return getNote(random(MAX_NOTES)); }
+    void toNotes(char * const notes, const size_t n_notes, const int lower_bound) const {
       for(byte i=0; i<n_notes; i++) notes[i] = getNote(i, lower_bound);
     }
-    void toNotes(char *notes, size_t n_notes) {
+    void toNotes(char * const notes, const size_t n_notes) const {
       toNotes(notes, n_notes, getLowerBound());
     }
-    void toNotes(char *notes) { toNotes(notes, MAX_NOTES); }
+    void toNotes(char * const notes) const { toNotes(notes, MAX_NOTES); }
     char *print(char *bufp) {
       bufp = MusicalNote::print(bufp);
       if( offset3 < 0 && offset5 < 0 && offset7 == -3 ) {
@@ -148,4 +173,3 @@ class MusicalChord : public MusicalNote {
       return bufp;
     }
 };
-

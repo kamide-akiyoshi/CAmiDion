@@ -62,4 +62,3 @@
  || defined(USE_LCD_VIA_PARALLEL)
 #define USE_LCD
 #endif
-
