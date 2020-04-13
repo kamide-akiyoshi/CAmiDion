@@ -735,13 +735,10 @@ void setup() {
 }
 
 void loop() {
-  // Enclose while() to run rapidly
-  while(1) {
-    PWMDACSynth::update();
-    metronome.update();
 #ifdef USE_MIDI_IN
-    MIDI.read();
+  MIDI.read();
 #endif
-    matrix.scan();
-  }
+  matrix.scan();
+  metronome.update();
+  PWMDACSynth::update();
 }
