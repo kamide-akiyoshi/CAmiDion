@@ -1,6 +1,6 @@
 //
 // CAmiDion - Musical Chord Instrument
-//  ver.20200405
+//  ver.20200418
 //  by Akiyoshi Kamide (Twitter: @akiyoshi_kamide)
 //  http://camidion.wordpress.com/camidion/
 //  http://osdn.net/users/kamide/pf/CAmiDion/
@@ -643,8 +643,8 @@ class MatrixButtons : public MatrixScanner {
           case 2: wave_selecter.changeEnvelope(ADSR_DECAY_VALUE, y); break;
           case 3: wave_selecter.changeEnvelope(ADSR_SUSTAIN_VALUE, y); break;
           case 4: wave_selecter.changeEnvelope(ADSR_RELEASE_VALUE, y); break;
-          case -1: wave_selecter.programChange(wave_selecter.getProgram() + y); break;
-          case -2: wave_selecter.programChange(wave_selecter.getProgram() + y*8); break;
+          case -1: wave_selecter.programChange(wave_selecter.getProgram() + y*8); break;
+          case -2: wave_selecter.programChange(wave_selecter.getProgram() + y); break;
         }
         return;
       }
