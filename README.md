@@ -3,7 +3,7 @@ Arduino互換機で動作する電子楽器CAmiDionのソースコードです�
 
 ## 必要なライブラリ(Required library to compile)
 使用する機能に応じて下記のライブラリが必要になります。
-- 音源：[PWMDAC_Synth](https://github.com/kamide-akiyoshi/CAmiDion/)
+- 音源：[PWMDAC_Synth](https://github.com/kamide-akiyoshi/PWMDAC_Synth/)
 - MIDI入出力：[Arduino MIDI library](https://www.arduino.cc/reference/en/libraries/midi-library/)
 - 液晶表示（接続方法に応じて下記のいずれかを選択）
   - I<sup>2</sup>C（標準的な構成：[SinglePCB](https://camidion.wordpress.com/camidion/lineup/camidion-singlepcb/)や[2号機](https://camidion.wordpress.com/camidion/lineup/camidion-2/)相当）：[I2CLiquidCrystal](https://n.mtng.org/ele/arduino/i2c.html)
